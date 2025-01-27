@@ -17,10 +17,10 @@ bot.onText(/\/start/, async (msg) => {
 
   // Адаптивные тексты
   const caption = isRussian
-    ? 'Добро пожаловать в Octies Galaxy! Создавай персонажей и зарабатывай токены OCTIES! 🐙'
-    : 'Welcome to the Octies Galaxy! Create characters and earn OCTIES tokens! 🐙';
+    ? 'Да-да, нет-нет ...'
+    : 'Да-да, нет-нет ...';
 
-  const buttonText = isRussian ? 'ONEX' : 'Go to App';
+  const buttonText = isRussian ? 'ONEX' : 'ONEX';
   const frontendUrl = `${FRONTEND_URL}?userId=${userId}`;
 
   // Путь к изображению
