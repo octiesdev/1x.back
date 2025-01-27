@@ -24,7 +24,7 @@ bot.onText(/\/start/, async (msg) => {
   const frontendUrl = `${FRONTEND_URL}?userId=${userId}`;
 
   // Путь к изображению
-  const imagePath = path.join(__dirname, 'images', 'Octies_bot_logo.png');
+  const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
 
   try {
     // Отправляем изображение с кнопкой
