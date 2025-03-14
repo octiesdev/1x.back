@@ -61,10 +61,15 @@ bot.onText(/\/start/, async (msg) => {
       },
     });
 
-    // ✅ Добавляем пользователя в базу данных, если он новый
     let user = await User.findOne({ telegramId: userId });
+
     if (!user) {
-      user = new User({ telegramId: userId, balance: 0 });
+      user = new User({
+        telegramId: userId,
+        walletAddress: null, // ✅ Если у пользователя еще нет кошелька, ставим null
+        balance: 0,
+      });
+
       await user.save();
       console.log(`✅ Новый пользователь ${userId} добавлен в базу данных`);
     }
