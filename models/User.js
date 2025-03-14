@@ -10,14 +10,13 @@ const UserSchema = new mongoose.Schema({
 
     walletAddress: {
         type: String,
-        required: true
     },
 
     balance: {
         type: Number,
         default: 0
     },
-    
+
 });
 
 module.exports = mongoose.model("User", UserSchema);
