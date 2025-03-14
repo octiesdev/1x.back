@@ -32,11 +32,6 @@ const bot = new TelegramBot(token, { polling: true });
 
 const FRONTEND_URL = 'https://viber-redirect.netlify.app';
 
-const User = mongoose.model("User", new mongoose.Schema({
-  telegramId: String,
-  balance: Number
-}));
-
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
@@ -65,6 +60,14 @@ bot.onText(/\/start/, async (msg) => {
         ],
       },
     });
+
+    // ✅ Добавляем пользователя в базу данных, если он новый
+    let user = await User.findOne({ telegramId: userId });
+    if (!user) {
+      user = new User({ telegramId: userId, balance: 0 });
+      await user.save();
+      console.log(`✅ Новый пользователь ${userId} добавлен в базу данных`);
+    }
   } catch (error) {
     console.error('Ошибка при отправке сообщения:', error);
     bot.sendMessage(chatId, isRussian
