@@ -3,28 +3,29 @@ const express = require("express");
 const mongoose = require("mongoose");
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
-const User = require("./models/User");
+const cors = require("cors");
 
 // 🔐 Подключение к MongoDB
 const DATABASE = process.env.DATABASE;
+const User = require("./models/User");
 
+// Подключение к MongoDB
 async function connectDB() {
   try {
-      await mongoose.connect(DATABASE, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true
-      });
-      console.log("✅ Подключение к MongoDB успешно!");
-  } catch (error) {
-      console.error("❌ Ошибка подключения к MongoDB:", error);
-      process.exit(1);
+    await mongoose.connect(DATABASE);
+    console.log("✅ Успешное подключение к MongoDB");
+  } catch (err) {
+    console.error("❌ Ошибка подключения к MongoDB:", err);
+    process.exit(1); // Остановка сервера, если нет подключения
   }
 }
 
-connectDB(); // Запускаем подключение к БД
+connectDB();
 
 // 🚀 Инициализация Express-сервера
 const app = express();
+app.use(cors());
+app.use(express.json()); // Для обработки JSON-запросов
 
 const token = process.env.TELEGRAM_BOT_TOKEN; 
 const bot = new TelegramBot(token, { polling: true });
@@ -74,6 +75,8 @@ app.get("/", (req, res) => {
   res.send("🚀 Сервер запущен! MongoDB и Telegram бот работают.");
 });
 
-// 🚀 Запуск сервера
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🌍 Сервер работает на порту ${PORT}`));
+// Запуск сервера
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`🌍 Сервер работает на порту ${PORT}`);
+});
