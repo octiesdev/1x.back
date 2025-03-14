@@ -32,6 +32,16 @@ const bot = new TelegramBot(token, { polling: true });
 
 const FRONTEND_URL = 'https://viber-redirect.netlify.app';
 
+const User = mongoose.model("User", new mongoose.Schema({
+  telegramId: String,
+  balance: Number
+}));
+
+app.get("/users", async (req, res) => {
+  const users = await User.find();
+  res.json(users);
+});
+
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
