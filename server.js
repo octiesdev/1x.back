@@ -91,6 +91,22 @@ bot.onText(/\/start/, async (msg) => {
 
 console.log('Бот запущен. Ожидаем команды /start...');
 
+// ✅ Добавляем эндпоинт для получения баланса
+app.get("/get-balance", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ balance: parseFloat(user.balance).toFixed(2) }); // Баланс в формате 0.00
+  } catch (error) {
+    console.error("❌ Ошибка при получении баланса:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.get("/users", async (req, res) => {
   const users = await User.find();
   res.json(users);
