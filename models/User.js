@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
     },
 
     balance: {
-        type: Number,
+        type: String,
         default: 0.00,
         set: (value) => parseFloat(value).toFixed(2) // ✅ Округляем до 2 знаков
     },
