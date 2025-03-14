@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
+const User = require("./models/User");
 
 // 🔐 Подключение к MongoDB
 const DATABASE = process.env.DATABASE;
