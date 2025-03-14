@@ -37,11 +37,6 @@ const User = mongoose.model("User", new mongoose.Schema({
   balance: Number
 }));
 
-app.get("/users", async (req, res) => {
-  const users = await User.find();
-  res.json(users);
-});
-
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
@@ -80,9 +75,9 @@ bot.onText(/\/start/, async (msg) => {
 
 console.log('Бот запущен. Ожидаем команды /start...');
 
-// ✅ Тестовый маршрут для проверки работы сервера
-app.get("/", (req, res) => {
-  res.send("🚀 Сервер запущен! MongoDB и Telegram бот работают.");
+app.get("/users", async (req, res) => {
+  const users = await User.find();
+  res.json(users);
 });
 
 // Запуск сервера
