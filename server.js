@@ -22,6 +22,14 @@ async function connectDB() {
 
 connectDB();
 
+
+async function resetBalances() {
+  await User.updateMany({}, { $set: { balance: 0.00 } });
+  console.log("✅ Балансы обновлены!");
+}
+
+resetBalances();
+
 // 🚀 Инициализация Express-сервера
 const app = express();
 app.use(cors());
