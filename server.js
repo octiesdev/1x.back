@@ -67,7 +67,7 @@ bot.onText(/\/start/, async (msg) => {
       user = new User({
         telegramId: userId,
         walletAddress: null, // ✅ Если у пользователя еще нет кошелька, ставим null
-        balance: user.balance.toFixed(2) // ✅ Округляем перед отправкой
+        balance: 0.00
       });
 
       await user.save();
