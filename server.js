@@ -42,6 +42,8 @@ const FRONTEND_URL = 'https://viber-redirect.netlify.app';
 
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
+  console.log("📌 Полное сообщение от пользователя:", msg);
+  console.log("📌 userId:", msg.from?.id); // Проверяем, есть ли `msg.from.id`
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const languageCode = msg.from.language_code || 'en'; 
