@@ -1,19 +1,41 @@
-const TelegramBot = require('node-telegram-bot-api');
-const path = require('path');
+require('dotenv').config(); // Загружаем переменные окружения
+const express = require("express");
+const mongoose = require("mongoose");
+const TelegramBot = require("node-telegram-bot-api");
+const path = require("path");
 
-// Токен Telegram бота
-const token = '7978525169:AAELA1uK50fy8dyZprGhrLDPxxXUD3jVros'; // Вставьте сюда ваш токен бота
+// 🔐 Подключение к MongoDB
+const DATABASE = process.env.DATABASE;
+
+async function connectDB() {
+  try {
+      await mongoose.connect(DATABASE, {
+          useNewUrlParser: true,
+          useUnifiedTopology: true
+      });
+      console.log("✅ Подключение к MongoDB успешно!");
+  } catch (error) {
+      console.error("❌ Ошибка подключения к MongoDB:", error);
+      process.exit(1);
+  }
+}
+
+connectDB(); // Запускаем подключение к БД
+
+// 🚀 Инициализация Express-сервера
+const app = express();
+
+const token = process.env.TELEGRAM_BOT_TOKEN; 
 const bot = new TelegramBot(token, { polling: true });
 
-// Фронтенд URL
-const FRONTEND_URL = 'https://viber-redirect.netlify.app'; // Вставьте сюда URL вашео фронтенда
+const FRONTEND_URL = 'https://viber-redirect.netlify.app';
 
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  const languageCode = msg.from.language_code || 'en'; // Язык пользователя
-  const isRussian = languageCode.startsWith('ru'); // Проверяем, русский ли язык
+  const languageCode = msg.from.language_code || 'en'; 
+  const isRussian = languageCode.startsWith('ru'); 
 
   // Адаптивные тексты
   const caption = isRussian
@@ -45,3 +67,12 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 console.log('Бот запущен. Ожидаем команды /start...');
+
+// ✅ Тестовый маршрут для проверки работы сервера
+app.get("/", (req, res) => {
+  res.send("🚀 Сервер запущен! MongoDB и Telegram бот работают.");
+});
+
+// 🚀 Запуск сервера
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🌍 Сервер работает на порту ${PORT}`));
