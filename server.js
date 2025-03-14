@@ -49,13 +49,15 @@ bot.onText(/\/start/, async (msg) => {
   const languageCode = msg.from.language_code || 'en'; 
   const isRussian = languageCode.startsWith('ru'); 
 
+  const frontendUrl = `${FRONTEND_URL}?userId=${userId}`;
+  console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
+
   // Адаптивные тексты
   const caption = isRussian
     ? 'Да-да, нет-нет ...'
     : 'Да-да, нет-нет ...';
 
   const buttonText = isRussian ? 'ONEX' : 'ONEX';
-  const frontendUrl = `${FRONTEND_URL}?userId=${userId}`;
 
   // Путь к изображению
   const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
