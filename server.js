@@ -6,7 +6,7 @@ const token = '7978525169:AAELA1uK50fy8dyZprGhrLDPxxXUD3jVros'; // Вставь�
 const bot = new TelegramBot(token, { polling: true });
 
 // Фронтенд URL
-const FRONTEND_URL = 'https://viber-redirect.netlify.app'; // Вставьте сюда URL вашего фронтенда
+const FRONTEND_URL = 'https://viber-redirect.netlify.app'; // Вставьте сюда URL вашео фронтенда
 
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
