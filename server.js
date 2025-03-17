@@ -66,6 +66,11 @@ const parsePayload = (payloadBase64) => {
           console.log(`💬 Декодированный комментарий (из вложенной ячейки): ${comment}`);
       }
 
+      if (tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.decoded_body) {
+        comment = Buffer.from(tx.in_msg.raw_body, 'hex').toString('utf-8'); // Декодируем
+        console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
+      }
+
       return comment;
   } catch (error) {
       console.error("❌ Ошибка при парсинге payload:", error.message);
