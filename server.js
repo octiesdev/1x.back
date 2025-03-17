@@ -33,13 +33,26 @@ const fetchTransactions = async () => {
               tx.in_msg.body.value &&
               tx.in_msg.body.value.text // Проверяем, есть ли комментарий
           ) {
-              // 📌 Сохраняем комментарий
+              // 📌 Сохраняем комментарий из `External-in message`
               tx.in_msg.comment = tx.in_msg.body.value.text; 
-              console.log(`💬 Найден комментарий: ${tx.in_msg.comment}`);
-              
-              await processTransaction(tx); // Отправляем в обработку
-          } else {
-              console.log(`⚠️ Транзакция ${tx.hash} без комментария. Пропускаем.`);
+              console.log(`💬 Найден комментарий (External): ${tx.in_msg.comment}`);
+              await processTransaction(tx);
+          } 
+          
+          // 🔥 Проверяем `Internal messages`, если они есть
+          if (tx.out_msgs && tx.out_msgs.length > 0) {
+              for (const outMsg of tx.out_msgs) {
+                  if (
+                      outMsg.body &&
+                      outMsg.body.value &&
+                      outMsg.body.value.text // Проверяем, есть ли комментарий
+                  ) {
+                      // 📌 Сохраняем комментарий из `Internal message`
+                      outMsg.comment = outMsg.body.value.text;
+                      console.log(`💬 Найден комментарий (Internal): ${outMsg.comment}`);
+                      await processTransaction({ in_msg: outMsg }); // Отправляем как входящее сообщение
+                  }
+              }
           }
       }
   } catch (error) {
