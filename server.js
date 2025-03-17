@@ -19,37 +19,42 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
 const API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
 
-// ✅ Функция парсинга payload из Base64 BOC
 const parsePayload = (payloadBase64) => {
   try {
-      if (!payloadBase64) return null; // Если пусто, сразу выход
+      if (!payloadBase64) return null; // Если payload пустой, выходим
 
       console.log("📌 Парсим payload (Base64):", payloadBase64);
+
+      // Преобразуем Base64 → Bytes → BOC
       const msgBody = TonWeb.utils.base64ToBytes(payloadBase64);
       const cell = Cell.oneFromBoc(msgBody);
       const slice = cell.beginParse();
       const op = slice.loadUint(32); // Загружаем 32-битный код операции
 
+      console.log("🔹 Опкод:", op.toString());
+
       // Если это обычный текстовый комментарий, он будет после 32-битного кода
       if (op.eq(new TonWeb.utils.BN(0))) {
           let payloadBytes = [];
-          while (slice.remainingBits) {
+          while (slice.remainingBits > 0) {
               payloadBytes.push(slice.loadUint(8));
           }
-          return new TextDecoder().decode(new Uint8Array(payloadBytes));
+          const decodedText = new TextDecoder().decode(new Uint8Array(payloadBytes));
+          console.log(`💬 Декодированный комментарий: ${decodedText}`);
+          return decodedText;
       }
+
   } catch (error) {
       console.error("⚠ Ошибка при парсинге payload:", error.message);
   }
   return null;
 };
 
-// ✅ Получение и обработка транзакций
 const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 5, decode: 1 } // Декодируем транзакции
+          params: { limit: 5, decode: 1 }
       });
 
       const transactions = response.data.transactions;
@@ -76,8 +81,7 @@ const fetchTransactions = async () => {
 
           // ✅ Попытка №3: Парсим `raw_body`
           if (!comment && tx.in_msg?.raw_body) {
-              console.log("🔍 Декодируем `raw_body`...");
-              console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body); // Логируем сырой `raw_body`
+              console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
               comment = parsePayload(tx.in_msg.raw_body);
               if (comment) console.log(`💬 Найден комментарий (raw_body): ${comment}`);
           }
