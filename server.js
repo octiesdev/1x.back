@@ -27,7 +27,13 @@ const fetchTransactions = async () => {
       console.log("✅ Полученные транзакции:", transactions);
 
       for (const tx of transactions) {
-          if (tx.in_msg && tx.in_msg.comment && tx.in_msg.value) {
+          if (
+              tx.in_msg && 
+              tx.in_msg.body && 
+              tx.in_msg.body.value && 
+              tx.in_msg.body.value.text // Ищем комментарий в body.value.text
+          ) {
+              tx.in_msg.comment = tx.in_msg.body.value.text; // Переносим комментарий в `tx.in_msg.comment`
               await processTransaction(tx); // Обрабатываем транзакцию
           }
       }
