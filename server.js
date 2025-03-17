@@ -219,6 +219,57 @@ app.get("/users", async (req, res) => {
   res.json(users);
 });
 
+// 📌 Обработчик вебхука для депозита
+app.post("/webhook", async (req, res) => {
+  try {
+      console.log("🔔 Получен новый вебхук:", req.body);
+
+      const transaction = req.body;
+      if (!transaction || !transaction.in_msg) {
+          return res.status(400).json({ error: "Invalid webhook data" });
+      }
+
+      let sender = transaction.in_msg.source || "unknown";
+      let value = transaction.in_msg.value || 0;
+      let comment = null;
+
+      // 🔍 **Извлекаем комментарий из возможных мест**
+      if (transaction.in_msg.decoded_body?.value?.text) {
+          comment = transaction.in_msg.decoded_body.value.text;
+      } else if (transaction.actions) {
+          for (const action of transaction.actions) {
+              if (action.msg?.message_internal?.body?.value?.value?.text) {
+                  sender = action.msg.message_internal.src || sender;
+                  value = action.msg.message_internal.value.grams;
+                  comment = action.msg.message_internal.body.value.value.text;
+                  break;
+              }
+          }
+      }
+
+      // ✅ **Обновляем баланс пользователя, если есть комментарий**
+      if (comment && comment.startsWith("deposit:")) {
+          const userId = comment.split(":")[1];
+          const user = await User.findOne({ telegramId: userId });
+          if (user) {
+              user.balance += parseFloat(value) / 1e9; // Переводим в TON
+              await user.save();
+              console.log(`💰 Баланс пользователя ${userId} обновлён: +${value / 1e9} TON`);
+          } else {
+              console.log(`❌ Пользователь ${userId} не найден.`);
+          }
+      } else {
+          console.log("⚠ Комментарий отсутствует или невалидный.");
+      }
+
+      res.status(200).json({ message: "Webhook received successfully" });
+
+  } catch (error) {
+      console.error("❌ Ошибка обработки вебхука:", error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Запуск сервера
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
