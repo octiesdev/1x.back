@@ -19,19 +19,16 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
 const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
 
+
+// 🔹 Функция конвертации HEX → UTF-8
 const hexToUtf8 = (hex) => {
   return Buffer.from(hex.replace(/^0x/, ''), 'hex').toString('utf8');
 };
 
-if (tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.raw_body) {
-  comment = hexToUtf8(tx.in_msg.raw_body.slice(16)); // Убираем первые 16 символов (метаданные)
-  console.log(`💬 Найден комментарий (raw_body → text_comment): ${comment}`);
-}
-
+// 🔹 Функция парсинга `payload`
 const parsePayload = (payloadBase64) => {
   try {
       if (!payloadBase64) return null;
-
       console.log("📌 Парсим payload (Base64):", payloadBase64);
 
       const msgBody = TonWeb.utils.base64ToBytes(payloadBase64);
@@ -45,12 +42,10 @@ const parsePayload = (payloadBase64) => {
       const cell = cells[0]; // Берем первый root cell
       const slice = cell.beginParse();
       const op = slice.loadUint(32); // Загружаем 32-битный код операции
-
       console.log("🔹 Опкод:", op.toString());
 
       let comment = null;
 
-      // 🔥 Проверяем, есть ли вложенный комментарий
       if (slice.remainingBits > 0) {
           let payloadBytes = [];
           while (slice.remainingBits > 0) {
@@ -60,26 +55,6 @@ const parsePayload = (payloadBase64) => {
           console.log(`💬 Декодированный комментарий: ${comment}`);
       }
 
-      // 🔍 Если есть вложенная референция, загружаем её
-      if (!comment && slice.remainingRefs > 0) {
-          console.log("🔄 Попытка загрузить комментарий из вложенной ячейки...");
-          const ref = slice.loadRef();
-          let refSlice = ref.beginParse();
-          let refPayloadBytes = [];
-
-          while (refSlice.remainingBits > 0) {
-              refPayloadBytes.push(refSlice.loadUint(8));
-          }
-
-          comment = new TextDecoder().decode(new Uint8Array(refPayloadBytes));
-          console.log(`💬 Декодированный комментарий (из вложенной ячейки): ${comment}`);
-      }
-
-      if (tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.decoded_body) {
-        comment = Buffer.from(tx.in_msg.raw_body, 'hex').toString('utf-8'); // Декодируем
-        console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
-      }
-
       return comment;
   } catch (error) {
       console.error("❌ Ошибка при парсинге payload:", error.message);
@@ -87,6 +62,7 @@ const parsePayload = (payloadBase64) => {
   }
 };
 
+// 🔹 Функция получения транзакций
 const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
@@ -104,51 +80,26 @@ const fetchTransactions = async () => {
 
           console.log("🔍 Проверяем транзакцию:", tx.hash);
 
-          // ✅ Попытка №1: `decoded_body.value.text`
+          // ✅ Способ №1: `decoded_body.value.text`
           if (tx.in_msg?.decoded_body?.value?.text) {
               comment = tx.in_msg.decoded_body.value.text;
               console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
           }
 
-          // ✅ Попытка №2: `payload.value.text`
+          // ✅ Способ №2: `payload.value.text`
           if (!comment && tx.in_msg?.payload?.value?.text) {
               comment = tx.in_msg.payload.value.text;
               console.log(`💬 Найден комментарий (payload): ${comment}`);
           }
 
-          // ✅ Попытка №3: Парсим `raw_body`
-          if (!comment && tx.in_msg?.raw_body) {
+          // ✅ Способ №3: Проверяем `raw_body`
+          if (!comment && tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.raw_body) {
               console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
-              comment = parsePayload(tx.in_msg.raw_body);
-              if (comment) console.log(`💬 Найден комментарий (raw_body): ${comment}`);
+              comment = hexToUtf8(tx.in_msg.raw_body.slice(16)); // Убираем метаданные
+              console.log(`💬 Найден комментарий (raw_body → text_comment): ${comment}`);
           }
 
-          if (!comment && tx.in_msg?.raw_body) {
-            console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
-            
-            try {
-                const msgBody = TonWeb.utils.base64ToBytes(tx.in_msg.raw_body);
-                const cell = Cell.oneFromBoc(msgBody);
-                const slice = cell.beginParse();
-                const op = slice.loadUint(32); // Загружаем 32-битный код операции
-        
-                console.log("🔹 Опкод:", op.toString());
-        
-                if (op.eq(new TonWeb.utils.BN(0))) {
-                    let payloadBytes = [];
-                    while (slice.remainingBits > 0) {
-                        payloadBytes.push(slice.loadUint(8));
-                    }
-                    const decodedText = new TextDecoder().decode(new Uint8Array(payloadBytes));
-                    console.log(`💬 Декодированный комментарий (raw_body): ${decodedText}`);
-                    comment = decodedText;
-                }
-            } catch (error) {
-                console.error("❌ Ошибка при парсинге raw_body:", error.message);
-            }
-        }
-
-          // ✅ Попытка №4: Проверяем `out_msgs[]`
+          // ✅ Способ №4: Проверяем `out_msgs[]`
           if (!comment && tx.out_msgs?.length > 0) {
               for (const msg of tx.out_msgs) {
                   if (msg.decoded_body?.value?.text) {
@@ -159,7 +110,7 @@ const fetchTransactions = async () => {
               }
           }
 
-          // ✅ Попытка №5: Проверяем `actions[].msg.message_internal.body.value.text`
+          // ✅ Способ №5: Проверяем `actions[].msg.message_internal.body.value.text`
           if (!comment && tx.actions?.length > 0) {
               for (const action of tx.actions) {
                   if (action.msg?.message_internal?.body?.value?.text) {
@@ -170,7 +121,7 @@ const fetchTransactions = async () => {
               }
           }
 
-          // ✅ Передаём данные в обработчик, если нашли комментарий
+          // ✅ Передаём данные в обработчик
           if (comment) {
               await processTransaction({ sender, value, comment });
           } else {
@@ -181,6 +132,7 @@ const fetchTransactions = async () => {
       console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
   }
 };
+
 
 // Подключение к MongoDB
 async function connectDB() {
