@@ -21,33 +21,56 @@ const API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/tran
 
 const parsePayload = (payloadBase64) => {
   try {
-      if (!payloadBase64) return null; // Если payload пустой, выходим
+      if (!payloadBase64) return null;
 
       console.log("📌 Парсим payload (Base64):", payloadBase64);
 
-      // Преобразуем Base64 → Bytes → BOC
       const msgBody = TonWeb.utils.base64ToBytes(payloadBase64);
-      const cell = Cell.oneFromBoc(msgBody);
+      const cells = Cell.fromBoc(msgBody);
+
+      if (cells.length === 0) {
+          console.warn("⚠ Ошибка при парсинге payload: пустой BOC");
+          return null;
+      }
+
+      const cell = cells[0]; // Берем первый root cell
       const slice = cell.beginParse();
       const op = slice.loadUint(32); // Загружаем 32-битный код операции
 
       console.log("🔹 Опкод:", op.toString());
 
-      // Если это обычный текстовый комментарий, он будет после 32-битного кода
-      if (op.eq(new TonWeb.utils.BN(0))) {
+      let comment = null;
+
+      // 🔥 Проверяем, есть ли вложенный комментарий
+      if (slice.remainingBits > 0) {
           let payloadBytes = [];
           while (slice.remainingBits > 0) {
               payloadBytes.push(slice.loadUint(8));
           }
-          const decodedText = new TextDecoder().decode(new Uint8Array(payloadBytes));
-          console.log(`💬 Декодированный комментарий: ${decodedText}`);
-          return decodedText;
+          comment = new TextDecoder().decode(new Uint8Array(payloadBytes));
+          console.log(`💬 Декодированный комментарий: ${comment}`);
       }
 
+      // 🔍 Если есть вложенная референция, загружаем её
+      if (!comment && slice.remainingRefs > 0) {
+          console.log("🔄 Попытка загрузить комментарий из вложенной ячейки...");
+          const ref = slice.loadRef();
+          let refSlice = ref.beginParse();
+          let refPayloadBytes = [];
+
+          while (refSlice.remainingBits > 0) {
+              refPayloadBytes.push(refSlice.loadUint(8));
+          }
+
+          comment = new TextDecoder().decode(new Uint8Array(refPayloadBytes));
+          console.log(`💬 Декодированный комментарий (из вложенной ячейки): ${comment}`);
+      }
+
+      return comment;
   } catch (error) {
-      console.error("⚠ Ошибка при парсинге payload:", error.message);
+      console.error("❌ Ошибка при парсинге payload:", error.message);
+      return null;
   }
-  return null;
 };
 
 const fetchTransactions = async () => {
