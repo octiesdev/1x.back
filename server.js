@@ -12,7 +12,7 @@ const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
 
 
-const TON_API_URL = "https://toncenter.com/api/v2";
+const TON_API_URL = "https://tonapi.io/v2/";
 const TON_API_KEY = process.env.TON_API_KEY; // 🔥 Твой API-ключ
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
 
