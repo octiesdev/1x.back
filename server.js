@@ -20,7 +20,7 @@ const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 10, decode: 1 } // ✅ Добавили decode=1
+          params: { limit: 3, decode: 1 } // ✅ Обязательно включаем `decode=1`
       });
 
       const transactions = response.data.transactions;
@@ -36,17 +36,17 @@ const fetchTransactions = async () => {
               sender = tx.in_msg.source || "unknown";
               value = tx.in_msg.value || 0;
 
-              // 🔥 **Ищем комментарий в `decoded_body.value.text`**
-              if (tx.in_msg.decoded_body && tx.in_msg.decoded_body.value && tx.in_msg.decoded_body.value.text) {
+              // 🔥 **Проверяем `decoded_body.value.text` (где обычно лежит комментарий)**
+              if (tx.in_msg.decoded_body?.value?.text) {
                   comment = tx.in_msg.decoded_body.value.text;
                   console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
               }
           }
 
-          // 🔍 **Проверяем `out_msgs`**
+          // 🔍 **Если комментарий не найден, проверяем `out_msgs`**
           if (!comment && tx.out_msgs && tx.out_msgs.length > 0) {
               for (const outMsg of tx.out_msgs) {
-                  if (outMsg.decoded_body && outMsg.decoded_body.value && outMsg.decoded_body.value.text) {
+                  if (outMsg.decoded_body?.value?.text) {
                       sender = outMsg.source || "unknown";
                       value = outMsg.value;
                       comment = outMsg.decoded_body.value.text;
@@ -56,27 +56,8 @@ const fetchTransactions = async () => {
               }
           }
 
-          // 🔍 **Проверяем `actions` (если комментарий там)**
-          if (!comment && tx.actions && tx.actions.length > 0) {
-              for (const action of tx.actions) {
-                  if (
-                      action.msg &&
-                      action.msg.message_internal &&
-                      action.msg.message_internal.body &&
-                      action.msg.message_internal.body.value &&
-                      action.msg.message_internal.body.value.text
-                  ) {
-                      sender = action.msg.message_internal.src || "unknown";
-                      value = action.msg.message_internal.value.grams;
-                      comment = action.msg.message_internal.body.value.text;
-                      console.log(`💬 Найден комментарий (actions): ${comment}`);
-                      break;
-                  }
-              }
-          }
-
-          // 🔍 **Если комментарий всё ещё не найден, логируем `raw_body`**
-          if (!comment && tx.in_msg && tx.in_msg.raw_body) {
+          // 🔍 **Если комментарий не найден, логируем `raw_body`**
+          if (!comment && tx.in_msg?.raw_body) {
               console.log("⚠ raw_body (возможно, здесь комментарий):", tx.in_msg.raw_body);
           }
 
