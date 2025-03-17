@@ -27,19 +27,7 @@ const fetchTransactions = async () => {
       console.log("✅ Полученные транзакции:", transactions);
 
       for (const tx of transactions) {
-          if (
-              tx.in_msg &&
-              tx.in_msg.body &&
-              tx.in_msg.body.value &&
-              tx.in_msg.body.value.text // Проверяем, есть ли комментарий
-          ) {
-              // 📌 Сохраняем комментарий из `External-in message`
-              tx.in_msg.comment = tx.in_msg.body.value.text; 
-              console.log(`💬 Найден комментарий (External): ${tx.in_msg.comment}`);
-              await processTransaction(tx);
-          } 
-          
-          // 🔥 Проверяем `Internal messages`, если они есть
+          // Проверяем наличие Internal Message
           if (tx.out_msgs && tx.out_msgs.length > 0) {
               for (const outMsg of tx.out_msgs) {
                   if (
@@ -47,10 +35,16 @@ const fetchTransactions = async () => {
                       outMsg.body.value &&
                       outMsg.body.value.text // Проверяем, есть ли комментарий
                   ) {
-                      // 📌 Сохраняем комментарий из `Internal message`
-                      outMsg.comment = outMsg.body.value.text;
-                      console.log(`💬 Найден комментарий (Internal): ${outMsg.comment}`);
-                      await processTransaction({ in_msg: outMsg }); // Отправляем как входящее сообщение
+                      // 📌 Извлекаем комментарий
+                      const comment = outMsg.body.value.text;
+                      console.log(`💬 Найден комментарий (Internal): ${comment}`);
+
+                      // Передаём транзакцию на обработку
+                      await processTransaction({
+                          sender: outMsg.source,
+                          value: outMsg.value,
+                          comment: comment,
+                      });
                   }
               }
           }
