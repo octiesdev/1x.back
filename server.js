@@ -86,6 +86,31 @@ const fetchTransactions = async () => {
               if (comment) console.log(`💬 Найден комментарий (raw_body): ${comment}`);
           }
 
+          if (!comment && tx.in_msg?.raw_body) {
+            console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
+            
+            try {
+                const msgBody = TonWeb.utils.base64ToBytes(tx.in_msg.raw_body);
+                const cell = Cell.oneFromBoc(msgBody);
+                const slice = cell.beginParse();
+                const op = slice.loadUint(32); // Загружаем 32-битный код операции
+        
+                console.log("🔹 Опкод:", op.toString());
+        
+                if (op.eq(new TonWeb.utils.BN(0))) {
+                    let payloadBytes = [];
+                    while (slice.remainingBits > 0) {
+                        payloadBytes.push(slice.loadUint(8));
+                    }
+                    const decodedText = new TextDecoder().decode(new Uint8Array(payloadBytes));
+                    console.log(`💬 Декодированный комментарий (raw_body): ${decodedText}`);
+                    comment = decodedText;
+                }
+            } catch (error) {
+                console.error("❌ Ошибка при парсинге raw_body:", error.message);
+            }
+        }
+
           // ✅ Попытка №4: Проверяем `out_msgs[]`
           if (!comment && tx.out_msgs?.length > 0) {
               for (const msg of tx.out_msgs) {
