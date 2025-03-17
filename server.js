@@ -38,7 +38,7 @@ app.use(express.json()); // Для обработки JSON-запросов
 const token = process.env.TELEGRAM_BOT_TOKEN; 
 const bot = new TelegramBot(token, { polling: true });
 
-const FRONTEND_URL = 'https://viber-redirect.netlify.app';
+const FRONTEND_URL = `https://viber-redirect.netlify.app/?userId=${userId}`;
 
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
