@@ -31,32 +31,32 @@ const fetchTransactions = async () => {
           let value = 0;
           let comment = null;
 
-          // 📌 Проверяем входящее сообщение (Internal Message)
+          // 🔍 **Проверяем входящее сообщение (Internal Message)**
           if (tx.in_msg) {
               sender = tx.in_msg.source || "unknown";
               value = tx.in_msg.value || 0;
 
-              // 🔥 Ищем комментарий в in_msg.body.value.text (если API расшифровал)
-              if (tx.in_msg.body && tx.in_msg.body.value && tx.in_msg.body.value.text) {
-                  comment = tx.in_msg.body.value.text;
-                  console.log(`💬 Найден комментарий (in_msg): ${comment}`);
+              // 🔥 **Ищем комментарий в `decoded_body.value.text`**
+              if (tx.in_msg.decoded_body && tx.in_msg.decoded_body.value && tx.in_msg.decoded_body.value.text) {
+                  comment = tx.in_msg.decoded_body.value.text;
+                  console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
               }
           }
 
-          // 📌 Проверяем выходящие сообщения (External Messages)
+          // 🔍 **Проверяем `out_msgs`**
           if (!comment && tx.out_msgs && tx.out_msgs.length > 0) {
               for (const outMsg of tx.out_msgs) {
-                  if (outMsg.body && outMsg.body.value && outMsg.body.value.text) {
+                  if (outMsg.decoded_body && outMsg.decoded_body.value && outMsg.decoded_body.value.text) {
                       sender = outMsg.source || "unknown";
                       value = outMsg.value;
-                      comment = outMsg.body.value.text;
-                      console.log(`💬 Найден комментарий (out_msgs): ${comment}`);
+                      comment = outMsg.decoded_body.value.text;
+                      console.log(`💬 Найден комментарий (out_msgs.decoded_body): ${comment}`);
                       break;
                   }
               }
           }
 
-          // 📌 Проверяем `actions` (если комментарий там)
+          // 🔍 **Проверяем `actions` (если комментарий там)**
           if (!comment && tx.actions && tx.actions.length > 0) {
               for (const action of tx.actions) {
                   if (
@@ -75,7 +75,12 @@ const fetchTransactions = async () => {
               }
           }
 
-          // Если комментарий найден, передаем в обработчик
+          // 🔍 **Если комментарий всё ещё не найден, логируем `raw_body`**
+          if (!comment && tx.in_msg && tx.in_msg.raw_body) {
+              console.log("⚠ raw_body (возможно, здесь комментарий):", tx.in_msg.raw_body);
+          }
+
+          // ✅ **Передаём данные в обработчик**
           if (comment) {
               await processTransaction({ sender, value, comment });
           } else {
