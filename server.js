@@ -73,11 +73,12 @@ const fetchTransactions = async () => {
       console.log("✅ Полученные транзакции:", transactions);
 
       for (const tx of transactions) {
-          let sender = tx.in_msg?.source || "unknown";
-          let nanoTON = tx.in_msg?.value || 0; // 🔥 Значение теперь правильно называется `nanoTON`
+          let sender = tx.in_msg?.source?.address || "unknown";
+          let nanoTON = tx.in_msg?.value || 0; // Сумма в наноTON
           let comment = null;
 
           console.log("🔍 Проверяем транзакцию:", tx.hash);
+          console.log("💰 Сумма (nanoTON):", nanoTON);
 
           // ✅ Способ №1: `decoded_body.value.text`
           if (tx.in_msg?.decoded_body?.value?.text) {
@@ -122,7 +123,7 @@ const fetchTransactions = async () => {
 
           // ✅ Передаём данные в обработчик
           if (comment) {
-              await processTransaction({ sender, nanoTON, comment }); // 🔥 Передаём `nanoTON`, а не `tx.in_msg?.value`
+              await processTransaction({ sender, nanoTON, comment });
           } else {
               console.log("⚠ Комментарий не найден в транзакции.");
           }
@@ -132,15 +133,15 @@ const fetchTransactions = async () => {
   }
 };
 
-// 🔹 Обработчик транзакций
 const processTransaction = async ({ sender, nanoTON, comment }) => {
   try {
-      const amountTON = parseFloat(nanoTON) / 1e9; // 🔥 Переводим из наноTON в TON
-
+      const amountTON = parseFloat(nanoTON) / 1e9; // Переводим из наноTON в TON
       console.log(`✅ Транзакция от ${sender} на сумму ${amountTON} TON с комментарием: ${comment}`);
 
-      // 🛠 Извлекаем `userId` из комментария (пример: "deposit:12345")
-      const userId = comment.startsWith("deposit:") ? comment.split(":")[1] : null;
+      // 🛠 Извлекаем userId из комментария (пример: "deposit:12345")
+      const match = comment.match(/deposit:(\d+)/);
+      const userId = match ? match[1] : null;
+
       if (!userId) {
           console.log("❌ Ошибка: не удалось извлечь userId.");
           return;
