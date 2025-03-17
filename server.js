@@ -38,7 +38,7 @@ app.use(express.json()); // Для обработки JSON-запросов
 const token = process.env.TELEGRAM_BOT_TOKEN; 
 const bot = new TelegramBot(token, { polling: true });
 
-const FRONTEND_URL = `https://viber-redirect.netlify.app/?userId=${userId}`;
+const FRONTEND_URL = "https://viber-redirect.netlify.app"; 
 
 // Обработка команды /start
 bot.onText(/\/start/, async (msg) => {
@@ -49,8 +49,8 @@ bot.onText(/\/start/, async (msg) => {
   const languageCode = msg.from.language_code || 'en'; 
   const isRussian = languageCode.startsWith('ru'); 
 
-  // ✅ Формируем ссылку только здесь, когда userId уже есть
-  const frontendUrl = `https://viber-redirect.netlify.app/?userId=${userId}`;
+  // ✅ Добавляем userId в URL только здесь, когда он уже объявлен
+  const frontendUrl = `${FRONTEND_URL}/?userId=${userId}`;
   console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
   // Адаптивные тексты
