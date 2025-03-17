@@ -20,7 +20,7 @@ const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 10 } // Получаем последние 10 транзакций
+          params: { limit: 5 } // Получаем последние 10 транзакций
       });
 
       const transactions = response.data.transactions;
@@ -105,7 +105,7 @@ const processTransaction = async (tx) => {
   }
 };
 
-setInterval(fetchTransactions, 30000);
+setInterval(fetchTransactions, 60000);
 
 // 🚀 Инициализация Express-сервера
 const app = express();
