@@ -49,7 +49,8 @@ bot.onText(/\/start/, async (msg) => {
   const languageCode = msg.from.language_code || 'en'; 
   const isRussian = languageCode.startsWith('ru'); 
 
-  const frontendUrl = `${FRONTEND_URL}?userId=${userId}`;
+  // ✅ Формируем ссылку только здесь, когда userId уже есть
+  const frontendUrl = `https://viber-redirect.netlify.app/?userId=${userId}`;
   console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
   // Адаптивные тексты
