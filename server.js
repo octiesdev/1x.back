@@ -19,6 +19,15 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
 const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
 
+const hexToUtf8 = (hex) => {
+  return Buffer.from(hex.replace(/^0x/, ''), 'hex').toString('utf8');
+};
+
+if (tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.raw_body) {
+  comment = hexToUtf8(tx.in_msg.raw_body.slice(16)); // Убираем первые 16 символов (метаданные)
+  console.log(`💬 Найден комментарий (raw_body → text_comment): ${comment}`);
+}
+
 const parsePayload = (payloadBase64) => {
   try {
       if (!payloadBase64) return null;
