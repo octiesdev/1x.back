@@ -62,7 +62,6 @@ const parsePayload = (payloadBase64) => {
   }
 };
 
-// 🔹 Функция получения транзакций
 const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
@@ -75,7 +74,7 @@ const fetchTransactions = async () => {
 
       for (const tx of transactions) {
           let sender = tx.in_msg?.source || "unknown";
-          let value = tx.in_msg?.value || 0;
+          let nanoTON = tx.in_msg?.value || 0; // 🔥 Значение теперь правильно называется `nanoTON`
           let comment = null;
 
           console.log("🔍 Проверяем транзакцию:", tx.hash);
@@ -123,7 +122,7 @@ const fetchTransactions = async () => {
 
           // ✅ Передаём данные в обработчик
           if (comment) {
-              await processTransaction({ sender, value, comment });
+              await processTransaction({ sender, nanoTON, comment }); // 🔥 Передаём `nanoTON`, а не `tx.in_msg?.value`
           } else {
               console.log("⚠ Комментарий не найден в транзакции.");
           }
@@ -132,6 +131,38 @@ const fetchTransactions = async () => {
       console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
   }
 };
+
+// 🔹 Обработчик транзакций
+const processTransaction = async ({ sender, nanoTON, comment }) => {
+  try {
+      const amountTON = parseFloat(nanoTON) / 1e9; // 🔥 Переводим из наноTON в TON
+
+      console.log(`✅ Транзакция от ${sender} на сумму ${amountTON} TON с комментарием: ${comment}`);
+
+      // 🛠 Извлекаем `userId` из комментария (пример: "deposit:12345")
+      const userId = comment.startsWith("deposit:") ? comment.split(":")[1] : null;
+      if (!userId) {
+          console.log("❌ Ошибка: не удалось извлечь userId.");
+          return;
+      }
+
+      // 🔍 Ищем пользователя в базе
+      let user = await User.findOne({ telegramId: userId });
+      if (!user) {
+          console.log(`❌ Пользователь ${userId} не найден.`);
+          return;
+      }
+
+      // 💰 Обновляем баланс
+      user.balance += amountTON;
+      await user.save();
+      console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
+  } catch (error) {
+      console.error("❌ Ошибка при обработке транзакции:", error);
+  }
+};
+
+setInterval(fetchTransactions, 30000);
 
 
 // Подключение к MongoDB
@@ -155,49 +186,6 @@ async function resetBalances() {
 
 resetBalances();
 
-const processTransaction = async (tx) => {
-  try {
-      const amountTON = parseFloat(tx.in_msg?.value) / 1e9; // Переводим из наноTON в TON
-      const senderAddress = tx.in_msg?.source;
-
-      // ⚡ Извлекаем комментарий из возможных мест
-      let comment = tx.in_msg?.comment || 
-                    tx.in_msg?.payload?.value?.text || 
-                    tx.actions?.[0]?.msg?.message_internal?.body?.value?.value?.text || 
-                    null;
-
-      if (!comment) {
-          console.log(`🔸 Транзакция на ${amountTON} TON без комментария. Пропускаем.`);
-          return;
-      }
-
-      console.log(`✅ Транзакция от ${senderAddress} с комментарием: ${comment}`);
-
-      // 🛠 Извлекаем userId из комментария (пример: "deposit:12345")
-      const userId = comment.startsWith("deposit:") ? comment.split(":")[1] : null;
-      if (!userId) {
-          console.log("❌ Ошибка: не удалось извлечь userId.");
-          return;
-      }
-
-      // 🔍 Ищем пользователя в базе
-      let user = await User.findOne({ telegramId: userId });
-      if (!user) {
-          console.log(`❌ Пользователь ${userId} не найден.`);
-          return;
-      }
-
-      // 💰 Обновляем баланс
-      user.balance += amountTON;
-      await user.save();
-      console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
-
-  } catch (error) {
-      console.error("❌ Ошибка при обработке транзакции:", error);
-  }
-};
-
-setInterval(fetchTransactions, 30000);
 
 // 🚀 Инициализация Express-сервера
 const app = express();
