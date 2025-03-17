@@ -52,7 +52,8 @@ const fetchTransactions = async () => {
 
           // 🔍 **Если комментарий не найден, проверяем `raw_body`**
           if (!comment && tx.in_msg?.raw_body) {
-              console.log("⚠ raw_body (попробуй вручную декодировать):", tx.in_msg.raw_body);
+              console.log("⚠ raw_body (возможно, здесь комментарий):", tx.in_msg.raw_body);
+              comment = tryDecodeComment(tx.in_msg.raw_body);
           }
 
           // ✅ **Передаём данные в обработчик**
@@ -64,6 +65,20 @@ const fetchTransactions = async () => {
       }
   } catch (error) {
       console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
+  }
+};
+
+const tryDecodeComment = (rawBody) => {
+  try {
+      // ✅ Преобразуем `raw_body` из HEX в UTF-8 (возможен base64)
+      let decoded = Buffer.from(rawBody, 'hex').toString('utf-8');
+
+      // 🔥 Ищем строку типа `deposit:123456`
+      const match = decoded.match(/deposit:\d+/);
+      return match ? match[0] : null;
+  } catch (error) {
+      console.error("❌ Ошибка декодирования raw_body:", error);
+      return null;
   }
 };
 
