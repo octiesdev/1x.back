@@ -19,26 +19,25 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
 const API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
 
-const parsePayload = (payloadBase64) => {
-  try {
-      const msgBody = TonWeb.utils.base64ToBytes(payloadBase64);
-      const cell = Cell.oneFromBoc(msgBody);
-      const slice = cell.beginParse();
-      const op = slice.loadUint(32); // Загружаем 32-битный код операции
+function parsePayload(payload) {
+  if (!payload) {
+      console.log("⚠ Ошибка: payload пустой или отсутствует.");
+      return null;
+  }
 
-      // Если это обычный текстовый комментарий, он будет после 32-битного кода
-      if (op.eq(new TonWeb.utils.BN(0))) {
-          let payloadBytes = [];
-          while (slice.remainingBits) {
-              payloadBytes.push(slice.loadUint(8));
-          }
-          return new TextDecoder().decode(new Uint8Array(payloadBytes));
+  let payloadBytes = [];
+  try {
+      while (payload) {
+          payloadBytes = [...payloadBytes, ...payload.loadBits(payload.getFreeBits())];
+          payload = payload.loadRef();
       }
   } catch (error) {
-      console.error("⚠ Ошибка при парсинге payload:", error.message);
+      console.error("❌ Ошибка при парсинге payload:", error.message);
+      return null;
   }
-  return null;
-};
+
+  return new TextDecoder().decode(new Uint8Array(payloadBytes));
+}
 
 const fetchTransactions = async () => {
 try {
