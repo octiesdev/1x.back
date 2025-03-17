@@ -27,26 +27,57 @@ const fetchTransactions = async () => {
       console.log("✅ Полученные транзакции:", transactions);
 
       for (const tx of transactions) {
-          // Проверяем наличие Internal Message
-          if (tx.out_msgs && tx.out_msgs.length > 0) {
-              for (const outMsg of tx.out_msgs) {
-                  if (
-                      outMsg.body &&
-                      outMsg.body.value &&
-                      outMsg.body.value.text // Проверяем, есть ли комментарий
-                  ) {
-                      // 📌 Извлекаем комментарий
-                      const comment = outMsg.body.value.text;
-                      console.log(`💬 Найден комментарий (Internal): ${comment}`);
+          let sender = null;
+          let value = null;
+          let comment = null;
 
-                      // Передаём транзакцию на обработку
-                      await processTransaction({
-                          sender: outMsg.source,
-                          value: outMsg.value,
-                          comment: comment,
-                      });
+          // 📌 Проверяем входящее сообщение (Internal Message)
+          if (tx.in_msg && tx.in_msg.body && tx.in_msg.body.value) {
+              if (tx.in_msg.body.value.text) {
+                  sender = tx.in_msg.source || "unknown";
+                  value = tx.in_msg.value;
+                  comment = tx.in_msg.body.value.text;
+                  console.log(`💬 Найден комментарий (in_msg): ${comment}`);
+              }
+          }
+
+          // 📌 Проверяем выходящие сообщения (External Messages)
+          if (!comment && tx.out_msgs && tx.out_msgs.length > 0) {
+              for (const outMsg of tx.out_msgs) {
+                  if (outMsg.body && outMsg.body.value && outMsg.body.value.text) {
+                      sender = outMsg.source || "unknown";
+                      value = outMsg.value;
+                      comment = outMsg.body.value.text;
+                      console.log(`💬 Найден комментарий (out_msgs): ${comment}`);
+                      break; // Берём первый найденный комментарий
                   }
               }
+          }
+
+          // 📌 Проверяем `actions` (если комментарий там)
+          if (!comment && tx.actions && tx.actions.length > 0) {
+              for (const action of tx.actions) {
+                  if (
+                      action.msg &&
+                      action.msg.message_internal &&
+                      action.msg.message_internal.body &&
+                      action.msg.message_internal.body.value &&
+                      action.msg.message_internal.body.value.text
+                  ) {
+                      sender = action.msg.message_internal.src || "unknown";
+                      value = action.msg.message_internal.value.grams;
+                      comment = action.msg.message_internal.body.value.text;
+                      console.log(`💬 Найден комментарий (actions): ${comment}`);
+                      break;
+                  }
+              }
+          }
+
+          // Если комментарий найден, передаем в обработчик
+          if (comment) {
+              await processTransaction({ sender, value, comment });
+          } else {
+              console.log("⚠ Комментарий не найден в транзакции.");
           }
       }
   } catch (error) {
