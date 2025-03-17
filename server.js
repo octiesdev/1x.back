@@ -19,72 +19,100 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
 const API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
 
-function parsePayload(payload) {
-  if (!payload) {
-      console.log("⚠ Ошибка: payload пустой или отсутствует.");
-      return null;
-  }
-
-  let payloadBytes = [];
+// ✅ Функция парсинга payload из Base64 BOC
+const parsePayload = (payloadBase64) => {
   try {
-      while (payload) {
-          payloadBytes = [...payloadBytes, ...payload.loadBits(payload.getFreeBits())];
-          payload = payload.loadRef();
+      if (!payloadBase64) return null; // Если пусто, сразу выход
+
+      console.log("📌 Парсим payload:", payloadBase64);
+      const msgBody = TonWeb.utils.base64ToBytes(payloadBase64);
+      const cell = Cell.oneFromBoc(msgBody);
+      const slice = cell.beginParse();
+      const op = slice.loadUint(32); // Загружаем 32-битный код операции
+
+      // Если это обычный текстовый комментарий, он будет после 32-битного кода
+      if (op.eq(new TonWeb.utils.BN(0))) {
+          let payloadBytes = [];
+          while (slice.remainingBits) {
+              payloadBytes.push(slice.loadUint(8));
+          }
+          return new TextDecoder().decode(new Uint8Array(payloadBytes));
       }
   } catch (error) {
-      console.error("❌ Ошибка при парсинге payload:", error.message);
-      return null;
+      console.error("⚠ Ошибка при парсинге payload:", error.message);
   }
+  return null;
+};
 
-  return new TextDecoder().decode(new Uint8Array(payloadBytes));
-}
-
+// ✅ Получение и обработка транзакций
 const fetchTransactions = async () => {
-try {
-    const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${TON_API_KEY}` },
-        params: { limit: 5, decode: 1 }
-    });
+  try {
+      const response = await axios.get(API_URL, {
+          headers: { Authorization: `Bearer ${TON_API_KEY}` },
+          params: { limit: 5, decode: 1 } // Декодируем транзакции
+      });
 
-    const transactions = response.data.transactions;
-    console.log("✅ Полученные транзакции:", transactions);
+      const transactions = response.data.transactions;
+      console.log("✅ Полученные транзакции:", transactions);
 
-    for (const tx of transactions) {
-        let sender = tx.in_msg?.source || "unknown";
-        let value = tx.in_msg?.value || 0;
-        let comment = null;
+      for (const tx of transactions) {
+          let sender = tx.in_msg?.source || "unknown";
+          let value = tx.in_msg?.value || 0;
+          let comment = null;
 
-        console.log("🔍 Проверяем транзакцию:", tx.hash);
+          console.log("🔍 Проверяем транзакцию:", tx.hash);
 
-        // ✅ Попытка №1: `decoded_body.value.text`
-        if (tx.in_msg?.decoded_body?.value?.text) {
-            comment = tx.in_msg.decoded_body.value.text;
-            console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
-        }
+          // ✅ Попытка №1: `decoded_body.value.text`
+          if (tx.in_msg?.decoded_body?.value?.text) {
+              comment = tx.in_msg.decoded_body.value.text;
+              console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
+          }
 
-        // ✅ Попытка №2: `payload.value.text`
-        if (!comment && tx.in_msg?.payload?.value?.text) {
-            comment = tx.in_msg.payload.value.text;
-            console.log(`💬 Найден комментарий (payload): ${comment}`);
-        }
+          // ✅ Попытка №2: `payload.value.text`
+          if (!comment && tx.in_msg?.payload?.value?.text) {
+              comment = tx.in_msg.payload.value.text;
+              console.log(`💬 Найден комментарий (payload): ${comment}`);
+          }
 
-        // ✅ Попытка №3: Парсим `raw_body`, если `decoded_body` и `payload` пусты
-        if (!comment && tx.in_msg?.raw_body) {
-            console.log("🔍 Декодируем `raw_body`...");
-            comment = parsePayload(tx.in_msg.raw_body);
-            if (comment) console.log(`💬 Найден комментарий (raw_body): ${comment}`);
-        }
+          // ✅ Попытка №3: Парсим `raw_body`
+          if (!comment && tx.in_msg?.raw_body) {
+              console.log("🔍 Декодируем `raw_body`...");
+              comment = parsePayload(tx.in_msg.raw_body);
+              if (comment) console.log(`💬 Найден комментарий (raw_body): ${comment}`);
+          }
 
-        // ✅ Передаём данные в обработчик, если нашли комментарий
-        if (comment) {
-            await processTransaction({ sender, value, comment });
-        } else {
-            console.log("⚠ Комментарий не найден в транзакции.");
-        }
-    }
-} catch (error) {
-    console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
-}
+          // ✅ Попытка №4: Проверяем `out_msgs[]`
+          if (!comment && tx.out_msgs?.length > 0) {
+              for (const msg of tx.out_msgs) {
+                  if (msg.decoded_body?.value?.text) {
+                      comment = msg.decoded_body.value.text;
+                      console.log(`💬 Найден комментарий (out_msgs): ${comment}`);
+                      break;
+                  }
+              }
+          }
+
+          // ✅ Попытка №5: Проверяем `actions[].msg.message_internal.body.value.text`
+          if (!comment && tx.actions?.length > 0) {
+              for (const action of tx.actions) {
+                  if (action.msg?.message_internal?.body?.value?.text) {
+                      comment = action.msg.message_internal.body.value.text;
+                      console.log(`💬 Найден комментарий (actions): ${comment}`);
+                      break;
+                  }
+              }
+          }
+
+          // ✅ Передаём данные в обработчик, если нашли комментарий
+          if (comment) {
+              await processTransaction({ sender, value, comment });
+          } else {
+              console.log("⚠ Комментарий не найден в транзакции.");
+          }
+      }
+  } catch (error) {
+      console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
+  }
 };
 
 // Подключение к MongoDB
