@@ -20,7 +20,7 @@ const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 10 } // Получаем последние 10 транзакций
+          params: { limit: 10, decode: 1 } // ✅ Добавили decode=1
       });
 
       const transactions = response.data.transactions;
@@ -36,7 +36,7 @@ const fetchTransactions = async () => {
               sender = tx.in_msg.source || "unknown";
               value = tx.in_msg.value || 0;
 
-              // 🔥 Ищем комментарий в in_msg.body.value.text
+              // 🔥 Ищем комментарий в in_msg.body.value.text (если API расшифровал)
               if (tx.in_msg.body && tx.in_msg.body.value && tx.in_msg.body.value.text) {
                   comment = tx.in_msg.body.value.text;
                   console.log(`💬 Найден комментарий (in_msg): ${comment}`);
