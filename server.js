@@ -24,7 +24,7 @@ const parsePayload = (payloadBase64) => {
   try {
       if (!payloadBase64) return null; // Если пусто, сразу выход
 
-      console.log("📌 Парсим payload:", payloadBase64);
+      console.log("📌 Парсим payload (Base64):", payloadBase64);
       const msgBody = TonWeb.utils.base64ToBytes(payloadBase64);
       const cell = Cell.oneFromBoc(msgBody);
       const slice = cell.beginParse();
@@ -77,6 +77,7 @@ const fetchTransactions = async () => {
           // ✅ Попытка №3: Парсим `raw_body`
           if (!comment && tx.in_msg?.raw_body) {
               console.log("🔍 Декодируем `raw_body`...");
+              console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body); // Логируем сырой `raw_body`
               comment = parsePayload(tx.in_msg.raw_body);
               if (comment) console.log(`💬 Найден комментарий (raw_body): ${comment}`);
           }
