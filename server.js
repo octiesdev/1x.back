@@ -12,9 +12,29 @@ const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
 
 
-const TON_API_URL = "https://tonapi.io/v2/";
-const TON_API_KEY = process.env.TON_API_KEY; // 🔥 Твой API-ключ
-const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
+const TON_API_KEY = process.env.TON_API_KEY;
+const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
+const API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
+
+const fetchTransactions = async () => {
+  try {
+      const response = await axios.get(API_URL, {
+          headers: { Authorization: `Bearer ${TON_API_KEY}` },
+          params: { limit: 10 } // Получаем последние 10 транзакций
+      });
+
+      const transactions = response.data.transactions;
+      console.log("✅ Полученные транзакции:", transactions);
+
+      for (const tx of transactions) {
+          if (tx.in_msg && tx.in_msg.comment && tx.in_msg.value) {
+              await processTransaction(tx); // Обрабатываем транзакцию
+          }
+      }
+  } catch (error) {
+      console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
+  }
+};
 
 // Подключение к MongoDB
 async function connectDB() {
@@ -37,38 +57,9 @@ async function resetBalances() {
 
 resetBalances();
 
-// 📌 Функция для проверки транзакций
-const fetchTransactions = async () => {
-  try {
-      const response = await axios.get(`${TON_API_URL}/getTransactions`, {
-          params: {
-              address: WALLET_ADDRESS,
-              limit: 10, // Берём последние 10 транзакций
-              api_key: TON_API_KEY
-          }
-      });
-
-      if (!response.data.ok) {
-          console.error("❌ Ошибка получения транзакций:", response.data.error);
-          return;
-      }
-
-      const transactions = response.data.result;
-      console.log("📥 Получено транзакций:", transactions.length);
-
-      for (const tx of transactions) {
-          processTransaction(tx);
-      }
-
-  } catch (error) {
-      console.error("❌ Ошибка при получении транзакций:", error);
-  }
-};
-
-// 📌 Функция обработки транзакции
 const processTransaction = async (tx) => {
   try {
-      const amountTON = parseFloat(tx.value) / 1e9; // Переводим из наноTON в TON
+      const amountTON = parseFloat(tx.in_msg.value) / 1e9; // Переводим из наноTON в TON
       const senderAddress = tx.in_msg.source;
       const comment = tx.in_msg.comment || null;
 
@@ -103,7 +94,6 @@ const processTransaction = async (tx) => {
   }
 };
 
-// 🔄 Запускаем проверку транзакций каждые 30 секунд
 setInterval(fetchTransactions, 30000);
 
 // 🚀 Инициализация Express-сервера
