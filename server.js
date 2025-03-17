@@ -27,15 +27,17 @@ const fetchTransactions = async () => {
       console.log("✅ Полученные транзакции:", transactions);
 
       for (const tx of transactions) {
-          let sender = null;
-          let value = null;
+          let sender = "unknown";
+          let value = 0;
           let comment = null;
 
           // 📌 Проверяем входящее сообщение (Internal Message)
-          if (tx.in_msg && tx.in_msg.body && tx.in_msg.body.value) {
-              if (tx.in_msg.body.value.text) {
-                  sender = tx.in_msg.source || "unknown";
-                  value = tx.in_msg.value;
+          if (tx.in_msg) {
+              sender = tx.in_msg.source || "unknown";
+              value = tx.in_msg.value || 0;
+
+              // 🔥 Ищем комментарий в in_msg.body.value.text
+              if (tx.in_msg.body && tx.in_msg.body.value && tx.in_msg.body.value.text) {
                   comment = tx.in_msg.body.value.text;
                   console.log(`💬 Найден комментарий (in_msg): ${comment}`);
               }
@@ -49,7 +51,7 @@ const fetchTransactions = async () => {
                       value = outMsg.value;
                       comment = outMsg.body.value.text;
                       console.log(`💬 Найден комментарий (out_msgs): ${comment}`);
-                      break; // Берём первый найденный комментарий
+                      break;
                   }
               }
           }
