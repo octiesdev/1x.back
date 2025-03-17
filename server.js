@@ -20,45 +20,39 @@ const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 3, decode: 1 } // ✅ Обязательно включаем `decode=1`
+          params: { limit: 5, decode: 1 } // ✅ Декодируем транзакции
       });
 
       const transactions = response.data.transactions;
       console.log("✅ Полученные транзакции:", transactions);
 
       for (const tx of transactions) {
-          let sender = "unknown";
-          let value = 0;
+          let sender = tx.in_msg?.source || "unknown";
+          let value = tx.in_msg?.value || 0;
           let comment = null;
 
-          // 🔍 **Проверяем входящее сообщение (Internal Message)**
-          if (tx.in_msg) {
-              sender = tx.in_msg.source || "unknown";
-              value = tx.in_msg.value || 0;
-
-              // 🔥 **Проверяем `decoded_body.value.text` (где обычно лежит комментарий)**
-              if (tx.in_msg.decoded_body?.value?.text) {
-                  comment = tx.in_msg.decoded_body.value.text;
-                  console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
-              }
+          // 🔍 **Ищем комментарий в `decoded_body.value.text` (TONAPI)**
+          if (tx.in_msg?.decoded_body?.value?.text) {
+              comment = tx.in_msg.decoded_body.value.text;
+              console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
           }
 
-          // 🔍 **Если комментарий не найден, проверяем `out_msgs`**
-          if (!comment && tx.out_msgs && tx.out_msgs.length > 0) {
-              for (const outMsg of tx.out_msgs) {
-                  if (outMsg.decoded_body?.value?.text) {
-                      sender = outMsg.source || "unknown";
-                      value = outMsg.value;
-                      comment = outMsg.decoded_body.value.text;
-                      console.log(`💬 Найден комментарий (out_msgs.decoded_body): ${comment}`);
+          // 🔍 **Если комментарий не найден, проверяем `actions[].msg.message_internal.body.value.value.text`**
+          if (!comment && tx.actions) {
+              for (const action of tx.actions) {
+                  if (action.msg?.message_internal?.body?.value?.value?.text) {
+                      sender = action.msg.message_internal.src || sender;
+                      value = action.msg.message_internal.value.grams;
+                      comment = action.msg.message_internal.body.value.value.text;
+                      console.log(`💬 Найден комментарий (actions): ${comment}`);
                       break;
                   }
               }
           }
 
-          // 🔍 **Если комментарий не найден, логируем `raw_body`**
+          // 🔍 **Если комментарий не найден, проверяем `raw_body`**
           if (!comment && tx.in_msg?.raw_body) {
-              console.log("⚠ raw_body (возможно, здесь комментарий):", tx.in_msg.raw_body);
+              console.log("⚠ raw_body (попробуй вручную декодировать):", tx.in_msg.raw_body);
           }
 
           // ✅ **Передаём данные в обработчик**
@@ -136,7 +130,7 @@ const processTransaction = async (tx) => {
   }
 };
 
-setInterval(fetchTransactions, 60000);
+setInterval(fetchTransactions, 30000);
 
 // 🚀 Инициализация Express-сервера
 const app = express();
