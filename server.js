@@ -31,10 +31,11 @@ const fetchTransactions = async () => {
               tx.in_msg &&
               tx.in_msg.body &&
               tx.in_msg.body.value &&
-              tx.in_msg.body.value.text // Проверяем, есть ли комментарий
+              tx.in_msg.body.value.text &&
+              tx.in_msg.body.value.value.text
           ) {
               // 📌 Переносим комментарий в `tx.in_msg.comment`
-              tx.in_msg.comment = tx.in_msg.body.value.text; 
+              tx.in_msg.comment = tx.in_msg.body.value.value.text; 
               console.log(`💬 Извлечён комментарий: ${tx.in_msg.comment}`);
               
               await processTransaction(tx); // Обрабатываем транзакцию
