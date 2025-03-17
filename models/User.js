@@ -19,6 +19,11 @@ const UserSchema = new mongoose.Schema({
         set: (value) => parseFloat(value.toFixed(2)) // ✅ Округляем до 2 знаков после запятой
     },
 
+    processedTransactions: {
+        type: [String],
+        default: [] 
+    } 
+
 });
 
 module.exports = mongoose.model("User", UserSchema);

@@ -76,54 +76,33 @@ const fetchTransactions = async () => {
           let sender = tx.in_msg?.source?.address || "unknown";
           let nanoTON = tx.in_msg?.value || 0; // Сумма в наноTON
           let comment = null;
+          let txHash = tx.hash; // ✅ Хэш транзакции
 
-          console.log("🔍 Проверяем транзакцию:", tx.hash);
+          console.log("🔍 Проверяем транзакцию:", txHash);
           console.log("💰 Сумма (nanoTON):", nanoTON);
 
-          // ✅ Способ №1: `decoded_body.value.text`
+          // ✅ Попытка №1: `decoded_body.value.text`
           if (tx.in_msg?.decoded_body?.value?.text) {
               comment = tx.in_msg.decoded_body.value.text;
               console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
           }
 
-          // ✅ Способ №2: `payload.value.text`
+          // ✅ Попытка №2: `payload.value.text`
           if (!comment && tx.in_msg?.payload?.value?.text) {
               comment = tx.in_msg.payload.value.text;
               console.log(`💬 Найден комментарий (payload): ${comment}`);
           }
 
-          // ✅ Способ №3: Проверяем `raw_body`
+          // ✅ Попытка №3: Проверяем `raw_body`
           if (!comment && tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.raw_body) {
               console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
               comment = hexToUtf8(tx.in_msg.raw_body.slice(16)); // Убираем метаданные
               console.log(`💬 Найден комментарий (raw_body → text_comment): ${comment}`);
           }
 
-          // ✅ Способ №4: Проверяем `out_msgs[]`
-          if (!comment && tx.out_msgs?.length > 0) {
-              for (const msg of tx.out_msgs) {
-                  if (msg.decoded_body?.value?.text) {
-                      comment = msg.decoded_body.value.text;
-                      console.log(`💬 Найден комментарий (out_msgs): ${comment}`);
-                      break;
-                  }
-              }
-          }
-
-          // ✅ Способ №5: Проверяем `actions[].msg.message_internal.body.value.text`
-          if (!comment && tx.actions?.length > 0) {
-              for (const action of tx.actions) {
-                  if (action.msg?.message_internal?.body?.value?.text) {
-                      comment = action.msg.message_internal.body.value.text;
-                      console.log(`💬 Найден комментарий (actions): ${comment}`);
-                      break;
-                  }
-              }
-          }
-
           // ✅ Передаём данные в обработчик
           if (comment) {
-              await processTransaction({ sender, nanoTON, comment });
+              await processTransaction({ sender, nanoTON, comment, txHash });
           } else {
               console.log("⚠ Комментарий не найден в транзакции.");
           }
@@ -133,7 +112,7 @@ const fetchTransactions = async () => {
   }
 };
 
-const processTransaction = async ({ sender, nanoTON, comment }) => {
+const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
   try {
       const amountTON = parseFloat(nanoTON) / 1e9; // Переводим из наноTON в TON
       console.log(`✅ Транзакция от ${sender} на сумму ${amountTON} TON с комментарием: ${comment}`);
@@ -149,15 +128,27 @@ const processTransaction = async ({ sender, nanoTON, comment }) => {
 
       // 🔍 Ищем пользователя в базе
       let user = await User.findOne({ telegramId: userId });
+
       if (!user) {
           console.log(`❌ Пользователь ${userId} не найден.`);
           return;
       }
 
+      // ✅ Проверяем, была ли транзакция уже обработана
+      if (user.processedTransactions.includes(txHash)) {
+          console.log(`⚠ Транзакция ${txHash} уже была обработана. Пропускаем.`);
+          return;
+      }
+
       // 💰 Обновляем баланс
       user.balance += amountTON;
+
+      // ✅ Добавляем хэш транзакции в список обработанных
+      user.processedTransactions.push(txHash);
+      
       await user.save();
       console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
+
   } catch (error) {
       console.error("❌ Ошибка при обработке транзакции:", error);
   }
