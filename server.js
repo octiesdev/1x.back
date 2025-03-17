@@ -20,7 +20,7 @@ const fetchTransactions = async () => {
   try {
       const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 5 } // Получаем последние 10 транзакций
+          params: { limit: 10 } // Получаем последние 10 транзакций
       });
 
       const transactions = response.data.transactions;
@@ -28,13 +28,18 @@ const fetchTransactions = async () => {
 
       for (const tx of transactions) {
           if (
-              tx.in_msg && 
-              tx.in_msg.body && 
-              tx.in_msg.body.value && 
-              tx.in_msg.body.value.text // Ищем комментарий в body.value.text
+              tx.in_msg &&
+              tx.in_msg.body &&
+              tx.in_msg.body.value &&
+              tx.in_msg.body.value.text // Проверяем, есть ли комментарий
           ) {
-              tx.in_msg.comment = tx.in_msg.body.value.text; // Переносим комментарий в `tx.in_msg.comment`
+              // 📌 Переносим комментарий в `tx.in_msg.comment`
+              tx.in_msg.comment = tx.in_msg.body.value.text; 
+              console.log(`💬 Извлечён комментарий: ${tx.in_msg.comment}`);
+              
               await processTransaction(tx); // Обрабатываем транзакцию
+          } else {
+              console.log(`⚠️ Транзакция ${tx.hash} без комментария. Пропускаем.`);
           }
       }
   } catch (error) {
