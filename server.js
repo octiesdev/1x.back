@@ -59,16 +59,21 @@ resetBalances();
 
 const processTransaction = async (tx) => {
   try {
-      const amountTON = parseFloat(tx.in_msg.value) / 1e9; // Переводим из наноTON в TON
-      const senderAddress = tx.in_msg.source;
-      const comment = tx.in_msg.comment || null;
+      const amountTON = parseFloat(tx.in_msg?.value) / 1e9; // Переводим из наноTON в TON
+      const senderAddress = tx.in_msg?.source;
+
+      // ⚡ Извлекаем комментарий из возможных мест
+      let comment = tx.in_msg?.comment || 
+                    tx.in_msg?.payload?.value?.text || 
+                    tx.actions?.[0]?.msg?.message_internal?.body?.value?.value?.text || 
+                    null;
 
       if (!comment) {
           console.log(`🔸 Транзакция на ${amountTON} TON без комментария. Пропускаем.`);
           return;
       }
 
-      console.log(`✅ Найдена транзакция от ${senderAddress} с комментарием: ${comment}`);
+      console.log(`✅ Транзакция от ${senderAddress} с комментарием: ${comment}`);
 
       // 🛠 Извлекаем userId из комментария (пример: "deposit:12345")
       const userId = comment.startsWith("deposit:") ? comment.split(":")[1] : null;
