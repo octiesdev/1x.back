@@ -125,6 +125,14 @@ app.use(express.json()); // Для работы с JSON
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
+const validateTelegramData = (initData) => {
+  const secret = crypto.createHmac("sha256", "WebAppData").update(TELEGRAM_BOT_TOKEN).digest();
+  const checkString = initData.split("&").filter(x => !x.startsWith("hash=")).sort().join("\n");
+  const hash = crypto.createHmac("sha256", secret).update(checkString).digest("hex");
+
+  return initData.includes(`hash=${hash}`);
+};
+
 const FRONTEND_URL = "https://viber-redirect.netlify.app";
 
 bot.onText(/\/start/, async (msg) => {
@@ -178,6 +186,24 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 console.log('Бот запущен. Ожидаем команды /start...');
+
+app.post("/auth", (req, res) => {
+  const { initData } = req.body;
+
+  if (!validateTelegramData(initData)) {
+      return res.status(403).json({ error: "Недействительные данные Telegram" });
+  }
+
+  // ✅ Данные проверены → Извлекаем userId
+  const urlParams = new URLSearchParams(initData);
+  const userId = urlParams.get("user") ? JSON.parse(urlParams.get("user")).id : null;
+
+  if (!userId) {
+      return res.status(400).json({ error: "userId отсутствует" });
+  }
+
+  res.json({ userId });
+});
 
 // ✅ Роут для регистрации пользователя
 app.post("/register-user", async (req, res) => {
