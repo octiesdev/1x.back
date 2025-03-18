@@ -212,7 +212,9 @@ app.get("/get-user", async (req, res) => {
       let user = await User.findOne({ telegramId: userId });
 
       if (!user) {
-          return res.status(404).json({ error: "User not found" });
+        console.log(`🚀 Новый пользователь ${userId}, создаём...`);
+        user = new User({ telegramId: userId, balance: 0.00, walletAddress: null });
+        await user.save();
       }
 
       res.json({ userId: user.telegramId });
