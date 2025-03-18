@@ -345,7 +345,7 @@ app.post("/finish-farming", async (req, res) => {
     }
 
     user.freeOnex = "зафармлено";
-    user.balance += 1; // Начисляем награду
+    user.balance += 1; // Начисляем наград
     await user.save();
 
     res.json({ success: true, balance: user.balance });
