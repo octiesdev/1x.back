@@ -201,23 +201,50 @@ app.get("/get-balance", async (req, res) => {
     }
 });
 
-app.get("/get-user", async (req, res) => {
+app.post("/register-user", async (req, res) => {
   try {
-      const { userId } = req.query; // Получаем `userId` из запроса
+      const { telegramId } = req.body;
 
-      if (!userId) {
-          return res.status(400).json({ error: "userId is required" });
+      if (!telegramId) {
+          return res.status(400).json({ error: "telegramId is required" });
       }
 
-      let user = await User.findOne({ telegramId: userId });
+      let user = await User.findOne({ telegramId });
 
       if (!user) {
-        console.log(`🚀 Новый пользователь ${userId}, создаём...`);
-        user = new User({ telegramId: userId, balance: 0.00, walletAddress: null });
-        await user.save();
+          console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
+          user = new User({
+              telegramId,
+              balance: 0.00,
+              walletAddress: null
+          });
+          await user.save();
+      } else {
+          console.log(`🔄 Пользователь ${telegramId} уже существует.`);
       }
 
       res.json({ userId: user.telegramId });
+  } catch (error) {
+      console.error("❌ Ошибка при создании пользователя:", error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/get-user", async (req, res) => {
+  try {
+      const telegramId = req.headers["x-telegram-id"]; // ✅ Получаем ID из заголовка
+
+      if (!telegramId) {
+          return res.status(400).json({ error: "userId is required" });
+      }
+
+      let user = await User.findOne({ telegramId });
+
+      if (!user) {
+          return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ userId: user.telegramId, balance: user.balance });
   } catch (error) {
       console.error("❌ Ошибка при получении userId:", error);
       res.status(500).json({ error: "Internal server error" });
