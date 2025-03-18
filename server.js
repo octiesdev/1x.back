@@ -6,7 +6,6 @@ const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
 const cors = require("cors");
 const TonWeb = require("tonweb");
-const { Cell } = TonWeb.boc;
 
 const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
@@ -119,8 +118,9 @@ async function connectDB() {
 connectDB();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+app.use(cors({ origin: "https://viber-redirect.netlify.app" })); // Указываем домен фронта
+app.use(express.json()); // Для работы с JSON
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -179,28 +179,7 @@ bot.onText(/\/start/, async (msg) => {
 
 console.log('Бот запущен. Ожидаем команды /start...');
 
-app.get("/get-balance", async (req, res) => {
-    try {
-        const { userId } = req.query;
-
-        if (!userId) {
-            return res.status(400).json({ error: "userId is required" });
-        }
-
-        let user = await User.findOne({ telegramId: userId });
-
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        res.json({ balance: parseFloat(user.balance).toFixed(2) });
-
-    } catch (error) {
-        console.error("❌ Ошибка при получении баланса:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
-
+// ✅ Роут для регистрации пользователя
 app.post("/register-user", async (req, res) => {
   try {
       const { telegramId } = req.body;
@@ -213,29 +192,24 @@ app.post("/register-user", async (req, res) => {
 
       if (!user) {
           console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
-          user = new User({
-              telegramId,
-              balance: 0.00,
-              walletAddress: null
-          });
+          user = new User({ telegramId, balance: 0.00, walletAddress: null });
           await user.save();
-      } else {
-          console.log(`🔄 Пользователь ${telegramId} уже существует.`);
       }
 
-      res.json({ userId: user.telegramId });
+      res.json({ success: true, userId: user.telegramId });
   } catch (error) {
-      console.error("❌ Ошибка при создании пользователя:", error);
+      console.error("❌ Ошибка при регистрации пользователя:", error);
       res.status(500).json({ error: "Internal server error" });
   }
 });
 
+// ✅ Роут для получения userId
 app.get("/get-user", async (req, res) => {
   try {
-      const telegramId = req.headers["x-telegram-id"]; // ✅ Получаем ID из заголовка
+      const telegramId = req.headers["x-telegram-id"];
 
       if (!telegramId) {
-          return res.status(400).json({ error: "userId is required" });
+          return res.status(400).json({ error: "telegramId is required in headers" });
       }
 
       let user = await User.findOne({ telegramId });
@@ -244,9 +218,31 @@ app.get("/get-user", async (req, res) => {
           return res.status(404).json({ error: "User not found" });
       }
 
-      res.json({ userId: user.telegramId, balance: user.balance });
+      res.json({ userId: user.telegramId });
   } catch (error) {
       console.error("❌ Ошибка при получении userId:", error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ✅ Роут для получения баланса
+app.get("/get-balance", async (req, res) => {
+  try {
+      const { userId } = req.query;
+
+      if (!userId) {
+          return res.status(400).json({ error: "userId is required" });
+      }
+
+      let user = await User.findOne({ telegramId: userId });
+
+      if (!user) {
+          return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ balance: parseFloat(user.balance).toFixed(2) });
+  } catch (error) {
+      console.error("❌ Ошибка при получении баланса:", error);
       res.status(500).json({ error: "Internal server error" });
   }
 });
