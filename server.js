@@ -247,6 +247,31 @@ app.get("/get-balance", async (req, res) => {
   }
 });
 
+app.post("/update-wallet", async (req, res) => {
+  try {
+      const { userId, walletAddress } = req.body;
+
+      if (!userId || !walletAddress) {
+          return res.status(400).json({ error: "❌ userId и walletAddress обязательны!" });
+      }
+
+      let user = await User.findOne({ telegramId: userId });
+
+      if (!user) {
+          return res.status(404).json({ error: "❌ Пользователь не найден!" });
+      }
+
+      user.walletAddress = walletAddress; // ✅ Обновляем кошелек
+      await user.save();
+
+      console.log(`✅ Кошелек ${walletAddress} сохранен для пользователя ${userId}`);
+      res.json({ success: true, walletAddress });
+  } catch (error) {
+      console.error("❌ Ошибка при обновлении кошелька:", error);
+      res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);
