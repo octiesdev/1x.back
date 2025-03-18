@@ -228,9 +228,26 @@ app.get("/get-balance", async (req, res) => {
   }
 });
 
-app.get("/users", async (req, res) => {
-  const users = await User.find();
-  res.json(users);
+app.get("/get-user", async (req, res) => {
+  try {
+    const userId = req.headers.authorization; // ✅ Получаем `userId` из токена или сессии (лучший вариант)
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // ✅ Проверяем, есть ли пользователь в базе данных
+    let user = await User.findOne({ telegramId: userId });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ userId: user.telegramId }); // ✅ Возвращаем `userId`
+  } catch (error) {
+    console.error("Ошибка при получении userId:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Запуск сервера
