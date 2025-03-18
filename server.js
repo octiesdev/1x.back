@@ -272,6 +272,70 @@ app.post("/update-wallet", async (req, res) => {
   }
 });
 
+app.post("/start-farming", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: "❌ userId обязателен!" });
+    }
+
+    let user = await User.findOne({ telegramId: userId });
+    if (!user) {
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
+    }
+
+    if (user.freeOnex === "таймер" || user.freeOnex === "зафармлено") {
+      return res.status(400).json({ error: "❌ Фарм уже активирован или завершен!" });
+    }
+
+    const endTime = new Date();
+    endTime.setSeconds(endTime.getSeconds() + 20); // ✅ Устанавливаем 20 секунд вместо 3 дней
+
+    user.freeOnex = "таймер";
+    user.farmEndTime = endTime;
+    await user.save();
+
+    console.log(`✅ Фарм запущен для пользователя ${userId}, завершится через 20 секунд.`);
+    res.json({ success: true, farmEndTime: endTime });
+  } catch (error) {
+    console.error("❌ Ошибка при запуске фарминга:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.post("/finish-farming", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: "❌ userId обязателен!" });
+    }
+
+    let user = await User.findOne({ telegramId: userId });
+    if (!user) {
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
+    }
+
+    if (user.freeOnex !== "таймер") {
+      return res.status(400).json({ error: "❌ Фарм не активирован!" });
+    }
+
+    if (new Date() < user.farmEndTime) {
+      return res.json({ success: false, message: "⏳ Фарм еще не завершен." });
+    }
+
+    // ✅ Фарм завершен, обновляем баланс и статус
+    user.freeOnex = "зафармлено";
+    user.balance += 1; // 🔥 Добавляем награду в TON
+    await user.save();
+
+    console.log(`✅ Фарм завершен! Баланс обновлен для ${userId}`);
+    res.json({ success: true, newBalance: user.balance });
+  } catch (error) {
+    console.error("❌ Ошибка при завершении фарминга:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);

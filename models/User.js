@@ -14,14 +14,24 @@ const UserSchema = new mongoose.Schema({
     },
 
     balance: {
-        type: Number,  // ✅ Используем число вместо строки
+        type: Number, 
         default: 0.00,
-        set: (value) => parseFloat(value.toFixed(2)) // ✅ Округляем до 2 знаков после запятой
+        set: (value) => parseFloat(value.toFixed(2)) 
     },
 
     processedTransactions: {
         type: [String],
         default: [] 
+    },
+
+    freeOnex: {
+        type: String,
+        default: "не активирована"
+    }, 
+
+    farmEndTime: { 
+        type: Date,
+        default: null 
     } 
 
 });
