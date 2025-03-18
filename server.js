@@ -336,30 +336,37 @@ app.post("/get-farming-status", async (req, res) => {
 
 app.post("/finish-farming", async (req, res) => {
   try {
-    const { userId } = req.body;
-    const user = await User.findOne({ telegramId: userId });
+      const { userId } = req.body;
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+      if (!userId) {
+          return res.status(400).json({ error: "❌ userId обязателен!" });
+      }
 
-    if (user.freeOnex !== "таймер") {
-      return res.status(400).json({ error: "Farming not active" });
-    }
+      let user = await User.findOne({ telegramId: userId });
 
-    const now = new Date();
-    if (new Date(user.farmEndTime) > now) {
-      return res.status(400).json({ error: "⏳ Фарм еще не завершен." });
-    }
+      if (!user) {
+          return res.status(404).json({ error: "❌ Пользователь не найден!" });
+      }
 
-    user.freeOnex = "зафармлено";
-    user.balance += 1; // Начисляем наград
-    await user.save();
+      if (!user.farmEndTime || new Date() < new Date(user.farmEndTime)) {
+          return res.status(400).json({ error: "⏳ Фарм еще не завершен." });
+      }
 
-    res.json({ success: true, balance: user.balance });
+      // ✅ Проверяем, получил ли уже бонус
+      if (user.freeOnex === "зафармлено") {
+          return res.json({ success: true, message: "🎉 Уже зачислено!" });
+      }
+
+      user.balance += 1; // ✅ Добавляем +1 TON
+      user.freeOnex = "зафармлено"; // ✅ Обновляем статус
+      await user.save();
+
+      console.log(`✅ Фарм завершен! +1 TON добавлено пользователю ${userId}`);
+
+      res.json({ success: true, message: "🎉 Фарм завершен!", balance: user.balance });
   } catch (error) {
-    console.error("❌ Ошибка при завершении фарминга:", error);
-    res.status(500).json({ error: "Server error" });
+      console.error("❌ Ошибка при завершении фарминга:", error);
+      res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
