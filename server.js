@@ -76,47 +76,47 @@ const fetchTransactions = async () => {
 };
 
 const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
-  try {
-      const amountTON = parseFloat(nanoTON) / 1e9;
-      console.log(`✅ Транзакция от ${sender} на сумму ${amountTON} TON с комментарием: ${comment}`);
+    try {
+        const amountTON = parseFloat(nanoTON) / 1e9;
+        console.log(`✅ Транзакция от ${sender} на сумму ${amountTON} TON с комментарием: ${comment}`);
 
-      const match = comment.match(/deposit:(\d+)/);
-      const userId = match ? match[1] : null;
+        const match = comment.match(/deposit:(\d+)/);
+        const userId = match ? match[1] : null;
 
-      if (!userId) {
-          console.log("❌ Ошибка: не удалось извлечь userId.");
-          return;
-      }
+        if (!userId) {
+            console.log("❌ Ошибка: не удалось извлечь userId.");
+            return;
+        }
 
-      // 🔍 Проверяем, есть ли пользователь
-      let user = await User.findOne({ telegramId: userId });
+        // 🔍 Проверяем, есть ли пользователь
+        let user = await User.findOne({ telegramId: userId });
 
-      if (!user) {
-          console.log(`🚀 Создаём нового пользователя ${userId}...`);
-          user = new User({
-              telegramId: userId,
-              walletAddress: null,
-              balance: 0.00,
-              processedTransactions: []
-          });
+        if (!user) {
+            console.log(`🚀 Создаём нового пользователя ${userId}...`);
+            user = new User({
+                telegramId: userId,
+                walletAddress: null,
+                balance: 0.00,
+                processedTransactions: []
+            });
 
-          await user.save();
-      }
+            await user.save();
+        }
 
-      if (user.processedTransactions.includes(txHash)) {
-          console.log(`⚠ Транзакция ${txHash} уже была обработана. Пропускаем.`);
-          return;
-      }
+        if (user.processedTransactions.includes(txHash)) {
+            console.log(`⚠ Транзакция ${txHash} уже была обработана. Пропускаем.`);
+            return;
+        }
 
-      user.balance += amountTON;
-      user.processedTransactions.push(txHash);
+        user.balance += amountTON;
+        user.processedTransactions.push(txHash);
 
-      await user.save();
-      console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
+        await user.save();
+        console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
 
-  } catch (error) {
-      console.error("❌ Ошибка при обработке транзакции:", error);
-  }
+    } catch (error) {
+        console.error("❌ Ошибка при обработке транзакции:", error);
+    }
 };
 
 setInterval(fetchTransactions, 30000);
@@ -156,24 +156,29 @@ const FRONTEND_URL = "https://viber-redirect.netlify.app";
 
 bot.onText(/\/start/, async (msg) => {
   console.log("📌 Полное сообщение от пользователя:", msg);
-
+  
   const chatId = msg.chat.id;
-  const userId = msg.from.id.toString();
+  const userId = msg.from.id.toString(); // 🛠 Приводим userId к строке для надёжности
   const languageCode = msg.from.language_code || 'en';
   const isRussian = languageCode.startsWith('ru');
 
   const frontendUrl = `${FRONTEND_URL}/?userId=${userId}`;
   console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
-  const caption = isRussian ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.' : 'Welcome! Click the button to continue.';
+  const caption = isRussian
+      ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.'
+      : 'Welcome! Click the button to continue.';
+  
   const buttonText = isRussian ? 'Открыть приложение' : 'Open App';
 
   const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
 
   try {
+      // ✅ Проверяем, есть ли пользователь в базе
       let user = await User.findOne({ telegramId: userId });
 
       if (!user) {
+          // 📌 Если пользователя нет, создаем нового
           user = new User({
               telegramId: userId,
               walletAddress: null,
@@ -187,6 +192,7 @@ bot.onText(/\/start/, async (msg) => {
           console.log(`🔄 Пользователь ${userId} уже зарегистрирован.`);
       }
 
+      // ✅ Отправляем кнопку
       await bot.sendPhoto(chatId, imagePath, {
           caption,
           reply_markup: {
@@ -214,10 +220,19 @@ app.get("/get-balance", async (req, res) => {
           return res.status(400).json({ error: "userId is required" });
       }
 
+      // 🔍 Проверяем, есть ли пользователь в базе
       let user = await User.findOne({ telegramId: userId });
 
       if (!user) {
-          return res.status(404).json({ error: "User not found" });
+          console.log(`🚀 Создаём нового пользователя ${userId}...`);
+          user = new User({
+              telegramId: userId,
+              walletAddress: null,
+              balance: 0.00,
+              processedTransactions: []
+          });
+
+          await user.save();
       }
 
       res.json({ balance: parseFloat(user.balance).toFixed(2) });
@@ -228,26 +243,9 @@ app.get("/get-balance", async (req, res) => {
   }
 });
 
-app.get("/get-user", async (req, res) => {
-  try {
-    const userId = req.headers.authorization; // ✅ Получаем `userId` из токена или сессии (лучший вариант)
-
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // ✅ Проверяем, есть ли пользователь в базе данных
-    let user = await User.findOne({ telegramId: userId });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.json({ userId: user.telegramId }); // ✅ Возвращаем `userId`
-  } catch (error) {
-    console.error("Ошибка при получении userId:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+app.get("/users", async (req, res) => {
+  const users = await User.find();
+  res.json(users);
 });
 
 // Запуск сервера
