@@ -156,29 +156,24 @@ const FRONTEND_URL = "https://viber-redirect.netlify.app";
 
 bot.onText(/\/start/, async (msg) => {
   console.log("📌 Полное сообщение от пользователя:", msg);
-  
+
   const chatId = msg.chat.id;
-  const userId = msg.from.id.toString(); // 🛠 Приводим userId к строке для надёжности
+  const userId = msg.from.id.toString();
   const languageCode = msg.from.language_code || 'en';
   const isRussian = languageCode.startsWith('ru');
 
   const frontendUrl = `${FRONTEND_URL}/?userId=${userId}`;
   console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
-  const caption = isRussian
-      ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.'
-      : 'Welcome! Click the button to continue.';
-  
+  const caption = isRussian ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.' : 'Welcome! Click the button to continue.';
   const buttonText = isRussian ? 'Открыть приложение' : 'Open App';
 
   const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
 
   try {
-      // ✅ Проверяем, есть ли пользователь в базе
       let user = await User.findOne({ telegramId: userId });
 
       if (!user) {
-          // 📌 Если пользователя нет, создаем нового
           user = new User({
               telegramId: userId,
               walletAddress: null,
@@ -192,7 +187,6 @@ bot.onText(/\/start/, async (msg) => {
           console.log(`🔄 Пользователь ${userId} уже зарегистрирован.`);
       }
 
-      // ✅ Отправляем кнопку
       await bot.sendPhoto(chatId, imagePath, {
           caption,
           reply_markup: {
@@ -220,19 +214,10 @@ app.get("/get-balance", async (req, res) => {
           return res.status(400).json({ error: "userId is required" });
       }
 
-      // 🔍 Проверяем, есть ли пользователь в базе
       let user = await User.findOne({ telegramId: userId });
 
       if (!user) {
-          console.log(`🚀 Создаём нового пользователя ${userId}...`);
-          user = new User({
-              telegramId: userId,
-              walletAddress: null,
-              balance: 0.00,
-              processedTransactions: []
-          });
-
-          await user.save();
+          return res.status(404).json({ error: "User not found" });
       }
 
       res.json({ balance: parseFloat(user.balance).toFixed(2) });
