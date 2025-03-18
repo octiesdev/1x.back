@@ -1,78 +1,64 @@
-require('dotenv').config(); // Загружаем переменные окружения
+require('dotenv').config();
 const axios = require("axios");
 const express = require("express");
 const mongoose = require("mongoose");
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
 const cors = require("cors");
-const TonWeb = require("tonweb"); // Подключаем TonWeb для работы с BOC
-const { Cell } = TonWeb.boc; // Импортируем Cell для парсинга
+const TonWeb = require("tonweb");
+const { Cell } = TonWeb.boc;
 
-
-
-// 🔐 Подключение к MongoDB
 const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
 
-
 const TON_API_KEY = process.env.TON_API_KEY;
-const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs"; // Кошелек, на который отправляют депозиты
-const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`; 
+const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
+const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
 
-
-// 🔹 Функция конвертации HEX → UTF-8
 const hexToUtf8 = (hex) => {
-  return Buffer.from(hex.replace(/^0x/, ''), 'hex').toString('utf8');
+    return Buffer.from(hex.replace(/^0x/, ''), 'hex').toString('utf8');
 };
 
 const fetchTransactions = async () => {
-  try {
-      const response = await axios.get(API_URL, {
-          headers: { Authorization: `Bearer ${TON_API_KEY}` },
-          params: { limit: 5, decode: 1 }
-      });
+    try {
+        const response = await axios.get(API_URL, {
+            headers: { Authorization: `Bearer ${TON_API_KEY}` },
+            params: { limit: 5, decode: 1 }
+        });
 
-      const transactions = response.data.transactions;
-      console.log("✅ Полученные транзакции:", transactions);
+        const transactions = response.data.transactions;
+        console.log("✅ Полученные транзакции:", transactions);
 
-      for (const tx of transactions) {
-          let sender = tx.in_msg?.source?.address || "unknown";
-          let nanoTON = tx.in_msg?.value || 0; // Сумма в наноTON
-          let comment = null;
-          let txHash = tx.hash; // ✅ Хэш транзакции
+        for (const tx of transactions) {
+            let sender = tx.in_msg?.source?.address || "unknown";
+            let nanoTON = tx.in_msg?.value || 0;
+            let comment = null;
+            let txHash = tx.hash;
 
-          console.log("🔍 Проверяем транзакцию:", txHash);
-          console.log("💰 Сумма (nanoTON):", nanoTON);
+            console.log("🔍 Проверяем транзакцию:", txHash);
+            console.log("💰 Сумма (nanoTON):", nanoTON);
 
-          // ✅ Попытка №1: `decoded_body.value.text`
-          if (tx.in_msg?.decoded_body?.value?.text) {
-              comment = tx.in_msg.decoded_body.value.text;
-              console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
-          }
+            if (tx.in_msg?.decoded_body?.value?.text) {
+                comment = tx.in_msg.decoded_body.value.text;
+                console.log(`💬 Найден комментарий (decoded_body): ${comment}`);
+            } else if (tx.in_msg?.payload?.value?.text) {
+                comment = tx.in_msg.payload.value.text;
+                console.log(`💬 Найден комментарий (payload): ${comment}`);
+            } else if (tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.raw_body) {
+                console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
+                comment = hexToUtf8(tx.in_msg.raw_body.slice(16));
+                console.log(`💬 Найден комментарий (raw_body → text_comment): ${comment}`);
+            }
 
-          // ✅ Попытка №2: `payload.value.text`
-          if (!comment && tx.in_msg?.payload?.value?.text) {
-              comment = tx.in_msg.payload.value.text;
-              console.log(`💬 Найден комментарий (payload): ${comment}`);
-          }
-
-          // ✅ Попытка №3: Проверяем `raw_body`
-          if (!comment && tx.in_msg?.decoded_op_name === "text_comment" && tx.in_msg?.raw_body) {
-              console.log("🟡 raw_body (Base64):", tx.in_msg.raw_body);
-              comment = hexToUtf8(tx.in_msg.raw_body.slice(16)); // Убираем метаданные
-              console.log(`💬 Найден комментарий (raw_body → text_comment): ${comment}`);
-          }
-
-          // ✅ Передаём данные в обработчик
-          if (comment) {
-              await processTransaction({ sender, nanoTON, comment, txHash });
-          } else {
-              console.log("⚠ Комментарий не найден в транзакции.");
-          }
-      }
-  } catch (error) {
-      console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
-  }
+            if (comment) {
+                await processTransaction({ sender, nanoTON, comment, txHash });
+            } else {
+                console.log("⚠ Комментарий не найден в транзакции.");
+            }
+        }
+    } catch (error) {
+        console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
+    }
 };
 
 const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
@@ -88,7 +74,6 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
             return;
         }
 
-        // 🔍 Проверяем, есть ли пользователь
         let user = await User.findOne({ telegramId: userId });
 
         if (!user) {
@@ -121,135 +106,102 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
 
 setInterval(fetchTransactions, 30000);
 
-
-// Подключение к MongoDB
 async function connectDB() {
-  try {
-    await mongoose.connect(DATABASE);
-    console.log("✅ Успешное подключение к MongoDB");
-  } catch (err) {
-    console.error("❌ Ошибка подключения к MongoDB:", err);
-    process.exit(1); // Остановка сервера, если нет подключения
-  }
+    try {
+        await mongoose.connect(DATABASE);
+        console.log("✅ Успешное подключение к MongoDB");
+    } catch (err) {
+        console.error("❌ Ошибка подключения к MongoDB:", err);
+        process.exit(1);
+    }
 }
 
 connectDB();
 
-
-async function resetBalances() {
-  await User.updateMany({}, { $set: { balance: 0.00 } });
-  console.log("✅ Балансы обновлены!");
-}
-
-resetBalances();
-
-
-// 🚀 Инициализация Express-сервера
 const app = express();
 app.use(cors());
-app.use(express.json()); // Для обработки JSON-запросов
+app.use(express.json());
 
-const token = process.env.TELEGRAM_BOT_TOKEN; 
+const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-const FRONTEND_URL = "https://viber-redirect.netlify.app"; 
+const FRONTEND_URL = "https://viber-redirect.netlify.app";
 
 bot.onText(/\/start/, async (msg) => {
-  console.log("📌 Полное сообщение от пользователя:", msg);
-  
-  const chatId = msg.chat.id;
-  const userId = msg.from.id.toString(); // 🛠 Приводим userId к строке для надёжности
-  const languageCode = msg.from.language_code || 'en';
-  const isRussian = languageCode.startsWith('ru');
+    console.log("📌 Полное сообщение от пользователя:", msg);
 
-  const frontendUrl = `${FRONTEND_URL}/?userId=${userId}`;
-  console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    const languageCode = msg.from.language_code || 'en';
+    const isRussian = languageCode.startsWith('ru');
 
-  const caption = isRussian
-      ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.'
-      : 'Welcome! Click the button to continue.';
-  
-  const buttonText = isRussian ? 'Открыть приложение' : 'Open App';
+    const frontendUrl = `${FRONTEND_URL}/?userId=${userId}`;
+    console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
-  const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
+    const caption = isRussian ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.' : 'Welcome! Click the button to continue.';
+    const buttonText = isRussian ? 'Открыть приложение' : 'Open App';
 
-  try {
-      // ✅ Проверяем, есть ли пользователь в базе
-      let user = await User.findOne({ telegramId: userId });
+    const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
 
-      if (!user) {
-          // 📌 Если пользователя нет, создаем нового
-          user = new User({
-              telegramId: userId,
-              walletAddress: null,
-              balance: 0.00,
-              processedTransactions: []
-          });
+    try {
+        let user = await User.findOne({ telegramId: userId });
 
-          await user.save();
-          console.log(`✅ Новый пользователь ${userId} добавлен в базу данных`);
-      } else {
-          console.log(`🔄 Пользователь ${userId} уже зарегистрирован.`);
-      }
+        if (!user) {
+            user = new User({
+                telegramId: userId,
+                walletAddress: null,
+                balance: 0.00,
+                processedTransactions: []
+            });
 
-      // ✅ Отправляем кнопку
-      await bot.sendPhoto(chatId, imagePath, {
-          caption,
-          reply_markup: {
-              inline_keyboard: [
-                  [{ text: buttonText, web_app: { url: frontendUrl } }]
-              ]
-          }
-      });
+            await user.save();
+            console.log(`✅ Новый пользователь ${userId} добавлен в базу данных`);
+        } else {
+            console.log(`🔄 Пользователь ${userId} уже зарегистрирован.`);
+        }
 
-  } catch (error) {
-      console.error('❌ Ошибка при обработке команды /start:', error);
-      bot.sendMessage(chatId, isRussian
-          ? 'Произошла ошибка при обработке команды.'
-          : 'An error occurred while processing the command.');
-  }
+        await bot.sendPhoto(chatId, imagePath, {
+            caption,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: buttonText, web_app: { url: frontendUrl } }]
+                ]
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Ошибка при обработке команды /start:', error);
+        bot.sendMessage(chatId, isRussian
+            ? 'Произошла ошибка при обработке команды.'
+            : 'An error occurred while processing the command.');
+    }
 });
 
 console.log('Бот запущен. Ожидаем команды /start...');
 
 app.get("/get-balance", async (req, res) => {
-  try {
-      const { userId } = req.query;
+    try {
+        const { userId } = req.query;
 
-      if (!userId) {
-          return res.status(400).json({ error: "userId is required" });
-      }
+        if (!userId) {
+            return res.status(400).json({ error: "userId is required" });
+        }
 
-      // 🔍 Проверяем, есть ли пользователь в базе
-      let user = await User.findOne({ telegramId: userId });
+        let user = await User.findOne({ telegramId: userId });
 
-      if (!user) {
-          console.log(`🚀 Создаём нового пользователя ${userId}...`);
-          user = new User({
-              telegramId: userId,
-              walletAddress: null,
-              balance: 0.00,
-              processedTransactions: []
-          });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
 
-          await user.save();
-      }
+        res.json({ balance: parseFloat(user.balance).toFixed(2) });
 
-      res.json({ balance: parseFloat(user.balance).toFixed(2) });
-
-  } catch (error) {
-      console.error("❌ Ошибка при получении баланса:", error);
-      res.status(500).json({ error: "Internal server error" });
-  }
+    } catch (error) {
+        console.error("❌ Ошибка при получении баланса:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
-app.get("/users", async (req, res) => {
-  const users = await User.find();
-  res.json(users);
-});
-
-// Запуск сервера
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🌍 Сервер работает на порту ${PORT}`);
+    console.log(`🌍 Сервер работает на порту ${PORT}`);
 });
