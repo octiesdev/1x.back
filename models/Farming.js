@@ -4,7 +4,7 @@ const farmingSchema = new mongoose.Schema({
 
   availableNodes: {
     type: Number,
-    default: 1 
+    default: 100 
   }
 });
 

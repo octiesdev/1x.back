@@ -401,7 +401,7 @@ app.get("/get-available-nodes", async (req, res) => {
     let farming = await Farming.findOne(); // ✅ Ищем запись
 
     if (!farming) {
-      farming = new Farming({ availableNodes: 1 }); // ✅ Если записи нет, создаем новую
+      farming = new Farming({ availableNodes: 100 }); // ✅ Если записи нет, создаем новую
       await farming.save();
     }
 
