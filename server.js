@@ -120,11 +120,8 @@ connectDB();
 
 const app = express();
 
-app.use(cors({
-  origin: ["https://viber-redirect.netlify.app", "http://localhost:3000"], // ✅ Разрешенные домены
-  methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-telegram-id"]
-}));
+app.use(cors({ origin: "https://viber-redirect.netlify.app" })); // Указываем домен фронта
+app.use(express.json()); // Для работы с JSON
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
