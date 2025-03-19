@@ -9,6 +9,7 @@ const TonWeb = require("tonweb");
 
 const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
+const Farming = require("./models/Farming"); // ✅ Подключаем схему Farming
 
 const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
@@ -275,24 +276,40 @@ app.post("/update-wallet", async (req, res) => {
 app.post("/start-farming", async (req, res) => {
   try {
     const { userId } = req.body;
-    const user = await User.findOne({ telegramId: userId });
+    let user = await User.findOne({ telegramId: userId });
+    let farming = await Farming.findOne();
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
+    }
+
+    if (!farming) {
+      farming = new Farming({ availableNodes: 100 }); // ✅ Создаем запись, если ее нет
+      await farming.save();
+    }
+
+    if (farming.availableNodes <= 0) {
+      return res.status(400).json({ error: "⛔ Нет доступных нод!" });
     }
 
     if (user.freeOnex === "таймер") {
       return res.status(400).json({ error: "Farming already active" });
     }
 
+    // ✅ Запускаем таймер фарминга
     const farmEndTime = new Date();
-    farmEndTime.setSeconds(farmEndTime.getSeconds() + 20); // 🔥 Для теста: 20 секунд (на продакшене меняем на 3 дня)
+    farmEndTime.setSeconds(farmEndTime.getSeconds() + 20); // 20 секунд для теста
 
     user.freeOnex = "таймер";
     user.farmEndTime = farmEndTime;
     await user.save();
 
-    res.json({ success: true, farmEndTime });
+    // ✅ Уменьшаем количество доступных нод
+    farming.availableNodes -= 1;
+    await farming.save();
+
+    console.log(`✅ Фарминг начат, осталось ${farming.availableNodes} нод`);
+    res.json({ success: true, farmEndTime, availableNodes: farming.availableNodes });
   } catch (error) {
     console.error("❌ Ошибка при запуске фарминга:", error);
     res.status(500).json({ error: "Server error" });
@@ -376,6 +393,22 @@ app.post("/finish-farming", async (req, res) => {
   } catch (error) {
       console.error("❌ Ошибка при завершении фарминга:", error);
       res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.get("/get-available-nodes", async (req, res) => {
+  try {
+    let farming = await Farming.findOne(); // ✅ Ищем запись
+
+    if (!farming) {
+      farming = new Farming({ availableNodes: 100 }); // ✅ Если записи нет, создаем новую
+      await farming.save();
+    }
+
+    res.json({ availableNodes: farming.availableNodes });
+  } catch (error) {
+    console.error("❌ Ошибка при получении доступных нод:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
