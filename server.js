@@ -434,16 +434,24 @@ app.post("/start-paid-farming", async (req, res) => {
     }
 
     let user = await User.findOne({ telegramId: userId });
-    let node = await getNodeById(nodeId);
 
     if (!user) {
       return res.status(404).json({ error: "❌ Пользователь не найден!" });
     }
 
+    let node = await getNodeById(nodeId);
+
     if (!node) {
       return res.status(404).json({ error: "❌ Нода не найдена!" });
     }
 
+    // ✅ Проверяем, была ли эта нода уже зафармлена
+    const alreadyFarmed = user.purchasedPaidNodes.some(n => n.nodeId.toString() === nodeId);
+    if (alreadyFarmed) {
+      return res.status(400).json({ error: "Вы уже фармили эту ноду!" });
+    }
+
+    // ✅ Проверяем, активна ли уже эта нода у юзера
     if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
       return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
     }
@@ -455,19 +463,10 @@ app.post("/start-paid-farming", async (req, res) => {
     // Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // 🟢 Определяем, как считать `days`
-    let farmDurationMs;
-    if (node.days < 1) {
-      farmDurationMs = node.days * 24 * 60 * 60 * 1000; // 🟢 Значение интерпретируется как **секунды**
-      console.log(`🕒 Используем СЕКУНДЫ: ${node.days * 86400} сек.`);
-    } else {
-      farmDurationMs = node.days * 24 * 60 * 60 * 1000; // 🟢 Значение интерпретируется как **дни**
-      console.log(`📆 Используем ДНИ: ${node.days} дней.`);
-    }
+    const farmEndTime = new Date();
+    farmEndTime.setSeconds(farmEndTime.getSeconds() + node.days * 86400); // Переводим дни в секунды
 
-    const farmEndTime = new Date(Date.now() + farmDurationMs);
-
-    // Добавляем ноду в список активных
+    // ✅ Добавляем ноду в список активных
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
