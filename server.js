@@ -412,6 +412,91 @@ app.get("/get-available-nodes", async (req, res) => {
   }
 });
 
+app.post("/start-paid-farming", async (req, res) => {
+  try {
+    const { userId, nodeId } = req.body;
+
+    if (!userId || !nodeId) {
+      return res.status(400).json({ error: "userId и nodeId обязательны!" });
+    }
+
+    let user = await User.findOne({ telegramId: userId });
+
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+
+    // 🔥 Запрашиваем информацию о ноде с админ-бэкенда
+    const nodeResponse = await axios.get(`https://adminviber1x-production.up.railway.app/onex-nodes/${nodeId}`);
+
+    if (!nodeResponse.data) {
+      return res.status(404).json({ error: "Нода не найдена!" });
+    }
+
+    const node = nodeResponse.data;
+
+    // 🔥 Проверяем, запустил ли пользователь уже эту ноду
+    if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
+      return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
+    }
+
+    // 🔥 Проверяем баланс пользователя
+    if (user.balance < node.stake) {
+      return res.status(400).json({ error: "Недостаточно средств!" });
+    }
+
+    // ✅ Вычитаем ставку из баланса
+    user.balance -= node.stake;
+
+    // ✅ Устанавливаем время окончания фарминга
+    const farmEndTime = new Date();
+    farmEndTime.setDate(farmEndTime.getDate() + node.days);
+
+    // ✅ Добавляем новую ноду в `activePaidNodes`
+    user.activePaidNodes.push({
+      nodeId: node._id,
+      section: node.section,
+      stake: node.stake,
+      apy: node.apy,
+      days: node.days,
+      rewardTon: node.rewardTon,
+      rewardOnex: node.rewardOnex,
+      farmEndTime: farmEndTime
+    });
+
+    await user.save();
+
+    console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание ${farmEndTime}`);
+
+    res.json({ success: true, message: "Нода запущена!", farmEndTime, activePaidNodes: user.activePaidNodes });
+
+  } catch (error) {
+    console.error("❌ Ошибка при запуске платной ноды:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.get("/get-active-paid-nodes", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId обязателен!" });
+    }
+
+    let user = await User.findOne({ telegramId: userId });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ activePaidNodes: user.activePaidNodes });
+  } catch (error) {
+    console.error("❌ Ошибка при получении активных платных нод:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);

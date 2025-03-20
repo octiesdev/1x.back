@@ -32,7 +32,51 @@ const UserSchema = new mongoose.Schema({
     farmEndTime: { 
         type: Date,
         default: null 
-    } 
+    },
+
+    activePaidNodes: [
+        {
+            nodeId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "ONEXs" 
+            },
+
+            section: {
+                type: String,
+                required: true 
+            },
+
+            stake: {
+                type: Number,
+                required: true
+            },
+
+            apy: { 
+                type: Number,
+                required: true
+            },
+
+            days: {
+                type: Number,
+                required: true 
+            },
+
+            rewardTon: {
+                type: Number,
+                required: true
+            },
+
+            rewardOnex: {
+                type: Number,
+                required: true
+            },
+
+            farmEndTime: {
+                type: Date,
+                required: true
+            }
+        }
+    ],
 
 });
 
