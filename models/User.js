@@ -85,13 +85,34 @@ const UserSchema = new mongoose.Schema({
 
     purchasedPaidNodes: [
         {
-            nodeId: mongoose.Schema.Types.ObjectId, 
-            stake: Number,  
-            rewardTon: Number,
-            status: String,  
-            farmEndTime: Date
+            nodeId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "ONEXs",
+                required: true
+            },
+            stake: {
+                type: Number,
+                required: true
+            },
+            rewardTon: {
+                type: Number,
+                required: true
+            },
+            farmEndTime: {
+                type: Date,
+                required: true
+            },
+            status: {
+                type: String,
+                enum: ["таймер", "зафармлено"],
+                default: "таймер"
+            },
+            createdAt: {
+                type: Date,
+                default: Date.now
+            }
         }
-    ]
+    ],
 
 });
 
