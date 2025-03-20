@@ -417,37 +417,41 @@ app.post("/start-paid-farming", async (req, res) => {
     const { userId, nodeId } = req.body;
 
     if (!userId || !nodeId) {
-      return res.status(400).json({ error: "userId и nodeId обязательны!" });
+      return res.status(400).json({ error: "❌ userId и nodeId обязательны!" });
     }
 
     let user = await User.findOne({ telegramId: userId });
     let node = await Onexs.findById(nodeId);
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      console.error("❌ Ошибка: Пользователь не найден!", { userId });
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
     }
 
     if (!node) {
-      return res.status(404).json({ error: "Node not found" });
+      console.error("❌ Ошибка: Нода не найдена!", { nodeId });
+      return res.status(404).json({ error: "❌ Нода не найдена!" });
     }
 
     if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
+      console.error("❌ Ошибка: Пользователь уже запустил эту ноду!", { userId, nodeId });
       return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
     }
 
     if (user.balance < node.stake) {
+      console.error("❌ Ошибка: Недостаточно средств!", { userId, balance: user.balance, stake: node.stake });
       return res.status(400).json({ error: "Недостаточно средств!" });
     }
 
-    // ✅ Вычитаем ставку из баланса
+    // Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // ✅ Корректно обрабатываем дробные дни
+    // Рассчитываем время окончания фарминга
     const now = new Date();
     const farmDurationMs = node.days * 24 * 60 * 60 * 1000; // Дни -> миллисекунды
     const farmEndTime = new Date(now.getTime() + farmDurationMs);
 
-    // ✅ Добавляем ноду в список активных
+    // Добавляем ноду в список активных
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
@@ -471,8 +475,8 @@ app.post("/start-paid-farming", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Ошибка при запуске платной ноды:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("❌ Критическая ошибка при запуске платного фарминга:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 });
 
