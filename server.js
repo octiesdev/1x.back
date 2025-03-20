@@ -15,6 +15,19 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
 const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
 
+const ADMIN_API_URL = "https://adminviber1x-production.up.railway.app"; // Адрес админ-панели
+
+async function getNodeById(nodeId) {
+    try {
+        const response = await fetch(`${ADMIN_API_URL}/onex-nodes/${nodeId}`);
+        if (!response.ok) throw new Error(`Ошибка получения ноды: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error("❌ Ошибка при запросе ноды с админ-панели:", error);
+        return null;
+    }
+}
+
 const hexToUtf8 = (hex) => {
     return Buffer.from(hex.replace(/^0x/, ''), 'hex').toString('utf8');
 };
