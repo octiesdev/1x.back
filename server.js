@@ -497,6 +497,81 @@ app.get("/get-active-paid-nodes", async (req, res) => {
   }
 });
 
+app.post("/finish-paid-farming", async (req, res) => {
+  try {
+      const { userId } = req.body;
+
+      if (!userId) {
+          return res.status(400).json({ error: "❌ userId обязателен!" });
+      }
+
+      let user = await User.findOne({ telegramId: userId });
+
+      if (!user) {
+          return res.status(404).json({ error: "❌ Пользователь не найден!" });
+      }
+
+      const now = new Date();
+      let totalReward = 0;
+      let finishedNodes = [];
+
+      // ✅ Перебираем активные ноды
+      user.activePaidNodes = user.activePaidNodes.filter(node => {
+          if (new Date(node.farmEndTime) <= now) {
+              // ✅ Добавляем сумму ставки + награду в баланс
+              totalReward += node.stake + node.rewardTon;
+              finishedNodes.push(node);
+              return false; // Удаляем из `activePaidNodes`
+          }
+          return true; // Оставляем активные ноды
+      });
+
+      if (finishedNodes.length > 0) {
+          user.balance += totalReward; // ✅ Обновляем баланс
+
+          // ✅ Добавляем завершенные ноды в историю
+          user.paidFarmingHistory.push(...finishedNodes);
+
+          await user.save(); // ✅ Сохраняем изменения
+          console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
+
+          return res.json({
+              success: true,
+              message: "🎉 Фарм завершен!",
+              balance: user.balance,
+              history: user.paidFarmingHistory
+          });
+      } else {
+          return res.json({ success: false, message: "⏳ Нет завершенных нод." });
+      }
+
+  } catch (error) {
+      console.error("❌ Ошибка при завершении платного фарминга:", error);
+      res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.get("/get-paid-farming-history", async (req, res) => {
+  try {
+      const { userId } = req.query;
+
+      if (!userId) {
+          return res.status(400).json({ error: "userId обязателен!" });
+      }
+
+      let user = await User.findOne({ telegramId: userId });
+
+      if (!user) {
+          return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ history: user.paidFarmingHistory });
+  } catch (error) {
+      console.error("❌ Ошибка при получении истории нод:", error);
+      res.status(500).json({ error: "Server error" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);

@@ -78,6 +78,24 @@ const UserSchema = new mongoose.Schema({
         }
     ],
 
+    // ✅ Новый массив истории купленных платных нод
+    paidFarmingHistory: [
+        {
+            nodeId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "ONEXs"
+            },
+            section: String,
+            stake: Number,
+            apy: Number,
+            days: Number,
+            rewardTon: Number,
+            rewardOnex: Number,
+            farmStartTime: Date,
+            farmEndTime: Date
+        }
+    ]
+
 });
 
 module.exports = mongoose.model("User", UserSchema);
