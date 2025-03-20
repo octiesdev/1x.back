@@ -421,26 +421,20 @@ app.post("/start-paid-farming", async (req, res) => {
     }
 
     let user = await User.findOne({ telegramId: userId });
+    let node = await Onexs.findById(nodeId);
 
     if (!user) {
-      return res.status(404).json({ error: "Пользователь не найден" });
+      return res.status(404).json({ error: "User not found" });
     }
 
-    // 🔥 Запрашиваем информацию о ноде с админ-бэкенда
-    const nodeResponse = await axios.get(`https://adminviber1x-production.up.railway.app/onex-nodes/${nodeId}`);
-
-    if (!nodeResponse.data) {
-      return res.status(404).json({ error: "Нода не найдена!" });
+    if (!node) {
+      return res.status(404).json({ error: "Node not found" });
     }
 
-    const node = nodeResponse.data;
-
-    // 🔥 Проверяем, запустил ли пользователь уже эту ноду
     if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
       return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
     }
 
-    // 🔥 Проверяем баланс пользователя
     if (user.balance < node.stake) {
       return res.status(400).json({ error: "Недостаточно средств!" });
     }
@@ -448,11 +442,12 @@ app.post("/start-paid-farming", async (req, res) => {
     // ✅ Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // ✅ Устанавливаем время окончания фарминга
-    const farmEndTime = new Date();
-    farmEndTime.setDate(farmEndTime.getDate() + node.days);
+    // ✅ Корректно обрабатываем дробные дни
+    const now = new Date();
+    const farmDurationMs = node.days * 24 * 60 * 60 * 1000; // Дни -> миллисекунды
+    const farmEndTime = new Date(now.getTime() + farmDurationMs);
 
-    // ✅ Добавляем новую ноду в `activePaidNodes`
+    // ✅ Добавляем ноду в список активных
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
@@ -466,13 +461,18 @@ app.post("/start-paid-farming", async (req, res) => {
 
     await user.save();
 
-    console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание ${farmEndTime}`);
+    console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание фарминга: ${farmEndTime}`);
 
-    res.json({ success: true, message: "Нода запущена!", farmEndTime, activePaidNodes: user.activePaidNodes });
+    res.json({
+      success: true,
+      message: "Нода запущена!",
+      farmEndTime,
+      activePaidNodes: user.activePaidNodes
+    });
 
   } catch (error) {
     console.error("❌ Ошибка при запуске платной ноды:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -499,55 +499,57 @@ app.get("/get-active-paid-nodes", async (req, res) => {
 
 app.post("/finish-paid-farming", async (req, res) => {
   try {
-      const { userId } = req.body;
+    const { userId } = req.body;
 
-      if (!userId) {
-          return res.status(400).json({ error: "❌ userId обязателен!" });
+    if (!userId) {
+      return res.status(400).json({ error: "❌ userId обязателен!" });
+    }
+
+    let user = await User.findOne({ telegramId: userId });
+
+    if (!user) {
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
+    }
+
+    const now = new Date();
+    let totalReward = 0;
+    let finishedNodes = [];
+
+    // ✅ Фильтруем завершенные ноды
+    user.activePaidNodes = user.activePaidNodes.filter(node => {
+      if (new Date(node.farmEndTime).getTime() <= now.getTime()) { 
+        totalReward += node.stake + node.rewardTon;
+        finishedNodes.push(node);
+        return false; // Убираем из активных
       }
+      return true; // Оставляем активные
+    });
 
-      let user = await User.findOne({ telegramId: userId });
+    if (finishedNodes.length > 0) {
+      user.balance += totalReward; // ✅ Начисляем награду
 
-      if (!user) {
-          return res.status(404).json({ error: "❌ Пользователь не найден!" });
+      // ✅ Сохраняем историю купленных нод
+      if (!user.paidFarmingHistory) {
+        user.paidFarmingHistory = [];
       }
+      user.paidFarmingHistory.push(...finishedNodes);
 
-      const now = new Date();
-      let totalReward = 0;
-      let finishedNodes = [];
+      await user.save();
+      console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
 
-      // ✅ Перебираем активные ноды и проверяем, завершился ли их фарминг
-      user.activePaidNodes = user.activePaidNodes.filter(node => {
-          if (new Date(node.farmEndTime) <= now) {
-              // ✅ Добавляем стоимость ноды + награду в баланс
-              totalReward += node.stake + node.rewardTon;
-              finishedNodes.push(node);
-              return false; // Убираем из `activePaidNodes`
-          }
-          return true; // Оставляем ноды, которые еще не завершились
+      return res.json({
+        success: true,
+        message: "🎉 Фарм завершен!",
+        balance: user.balance,
+        history: user.paidFarmingHistory
       });
-
-      if (finishedNodes.length > 0) {
-          user.balance += totalReward; // ✅ Обновляем баланс
-
-          // ✅ Добавляем завершенные ноды в историю купленных нод
-          user.paidFarmingHistory.push(...finishedNodes);
-
-          await user.save(); // ✅ Сохраняем изменения в базе данных
-          console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
-
-          return res.json({
-              success: true,
-              message: "🎉 Фарм завершен!",
-              balance: user.balance,
-              history: user.paidFarmingHistory
-          });
-      } else {
-          return res.json({ success: false, message: "⏳ Нет завершенных нод." });
-      }
+    } else {
+      return res.json({ success: false, message: "⏳ Нет завершенных нод." });
+    }
 
   } catch (error) {
-      console.error("❌ Ошибка при завершении платного фарминга:", error);
-      res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Ошибка при завершении платного фарминга:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
