@@ -515,24 +515,24 @@ app.post("/finish-paid-farming", async (req, res) => {
       let totalReward = 0;
       let finishedNodes = [];
 
-      // ✅ Перебираем активные ноды
+      // ✅ Перебираем активные ноды и проверяем, завершился ли их фарминг
       user.activePaidNodes = user.activePaidNodes.filter(node => {
           if (new Date(node.farmEndTime) <= now) {
-              // ✅ Добавляем сумму ставки + награду в баланс
+              // ✅ Добавляем стоимость ноды + награду в баланс
               totalReward += node.stake + node.rewardTon;
               finishedNodes.push(node);
-              return false; // Удаляем из `activePaidNodes`
+              return false; // Убираем из `activePaidNodes`
           }
-          return true; // Оставляем активные ноды
+          return true; // Оставляем ноды, которые еще не завершились
       });
 
       if (finishedNodes.length > 0) {
           user.balance += totalReward; // ✅ Обновляем баланс
 
-          // ✅ Добавляем завершенные ноды в историю
+          // ✅ Добавляем завершенные ноды в историю купленных нод
           user.paidFarmingHistory.push(...finishedNodes);
 
-          await user.save(); // ✅ Сохраняем изменения
+          await user.save(); // ✅ Сохраняем изменения в базе данных
           console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
 
           return res.json({
