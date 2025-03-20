@@ -421,20 +421,26 @@ app.post("/start-paid-farming", async (req, res) => {
     }
 
     let user = await User.findOne({ telegramId: userId });
-    let node = await Onexs.findById(nodeId); // ✅ Ищем ноду
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "Пользователь не найден" });
     }
 
-    if (!node) {
-      return res.status(404).json({ error: "Node not found" });
+    // 🔥 Запрашиваем информацию о ноде с админ-бэкенда
+    const nodeResponse = await axios.get(`https://adminviber1x-production.up.railway.app/onex-nodes/${nodeId}`);
+
+    if (!nodeResponse.data) {
+      return res.status(404).json({ error: "Нода не найдена!" });
     }
 
+    const node = nodeResponse.data;
+
+    // 🔥 Проверяем, запустил ли пользователь уже эту ноду
     if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
       return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
     }
 
+    // 🔥 Проверяем баланс пользователя
     if (user.balance < node.stake) {
       return res.status(400).json({ error: "Недостаточно средств!" });
     }
@@ -442,11 +448,11 @@ app.post("/start-paid-farming", async (req, res) => {
     // ✅ Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // ✅ Запускаем таймер
+    // ✅ Устанавливаем время окончания фарминга
     const farmEndTime = new Date();
     farmEndTime.setDate(farmEndTime.getDate() + node.days);
 
-    // ✅ Добавляем ноду в список активных
+    // ✅ Добавляем новую ноду в `activePaidNodes`
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
@@ -463,9 +469,10 @@ app.post("/start-paid-farming", async (req, res) => {
     console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание ${farmEndTime}`);
 
     res.json({ success: true, message: "Нода запущена!", farmEndTime, activePaidNodes: user.activePaidNodes });
+
   } catch (error) {
     console.error("❌ Ошибка при запуске платной ноды:", error);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
