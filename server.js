@@ -498,15 +498,14 @@ app.post("/start-paid-farming", async (req, res) => {
 app.get("/get-active-paid-nodes", async (req, res) => {
   try {
     const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId обязателен!" });
+    if (!userId || userId === "null") { // ✅ Фикс для случая "null"
+      return res.status(400).json({ error: "❌ userId обязателен!" });
     }
 
     let user = await User.findOne({ telegramId: userId });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
     }
 
     res.json({ activePaidNodes: user.activePaidNodes });
