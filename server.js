@@ -518,28 +518,46 @@ app.get("/get-active-paid-nodes", async (req, res) => {
 app.post("/finish-paid-farming", async (req, res) => {
   try {
     const { userId } = req.body;
+
     if (!userId) return res.status(400).json({ error: "❌ userId обязателен!" });
 
     let user = await User.findOne({ telegramId: userId });
-    if (!user) return res.status(404).json({ error: "❌ Пользователь не найден!" });
+
+    if (!user) {
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
+    }
 
     const now = new Date();
     let totalReward = 0;
+    let updatedNodes = [];
 
-    // ✅ Проверяем активные ноды
+    console.log(`📌 Проверка платных нод для userId: ${userId} в ${now}`);
+
     for (const node of user.activePaidNodes) {
-      if (new Date(node.farmEndTime) <= now && node.status !== "зафармлено") {
-        totalReward += node.stake + node.rewardTon;
-        node.status = "зафармлено"; // ✅ Обновляем статус
-        console.log(`✅ Нода #${node.nodeId} завершена! Начисляем ${node.stake + node.rewardTon} TON`);
+      console.log(`🔍 Проверяем ноду ${node.nodeId} (окончание: ${node.farmEndTime})`);
+
+      if (new Date(node.farmEndTime) <= now) {
+        let reward = node.stake + node.rewardTon;
+        totalReward += reward;
+
+        console.log(`✅ Нода завершена! Начисляем ${reward} TON, обновляем статус.`);
+
+        user.activePaidNodes = user.activePaidNodes.map(n =>
+          new Date(n.farmEndTime) <= now ? { ...n, status: "зафармлено" } : n
+        );
+      } else {
+        updatedNodes.push(node);
+        console.log(`⏳ Нода еще активна: ${node.nodeId}`);
       }
     }
 
-    // ✅ Обновляем баланс, если есть награды
     if (totalReward > 0) {
+      console.log(`💰 ДО обновления: Баланс пользователя ${userId}: ${user.balance}`);
       user.balance += totalReward;
+      user.activePaidNodes = updatedNodes; // Убираем зафармленные
       await user.save();
-      console.log(`✅ Баланс обновлен: +${totalReward} TON для ${userId}, новый баланс: ${user.balance}`);
+      console.log(`💰 ПОСЛЕ обновления: Баланс пользователя ${userId}: ${user.balance}`);
+
       return res.json({ success: true, balance: user.balance });
     } else {
       return res.json({ success: false, message: "⏳ Нет завершенных нод." });
