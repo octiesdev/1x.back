@@ -417,42 +417,44 @@ app.post("/start-paid-farming", async (req, res) => {
     const { userId, nodeId } = req.body;
 
     if (!userId || !nodeId) {
-      return res.status(400).json({ error: "userId и nodeId обязательны!" });
+      return res.status(400).json({ error: "❌ userId и nodeId обязательны!" });
     }
 
     let user = await User.findOne({ telegramId: userId });
+    let node = await getNodeById(nodeId);
 
     if (!user) {
-      return res.status(404).json({ error: "Пользователь не найден" });
+      return res.status(404).json({ error: "❌ Пользователь не найден!" });
     }
 
-    // 🔥 Запрашиваем информацию о ноде с админ-бэкенда
-    const nodeResponse = await axios.get(`https://adminviber1x-production.up.railway.app/onex-nodes/${nodeId}`);
-
-    if (!nodeResponse.data) {
-      return res.status(404).json({ error: "Нода не найдена!" });
+    if (!node) {
+      return res.status(404).json({ error: "❌ Нода не найдена!" });
     }
 
-    const node = nodeResponse.data;
-
-    // 🔥 Проверяем, запустил ли пользователь уже эту ноду
     if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
       return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
     }
 
-    // 🔥 Проверяем баланс пользователя
     if (user.balance < node.stake) {
       return res.status(400).json({ error: "Недостаточно средств!" });
     }
 
-    // ✅ Вычитаем ставку из баланса
+    // Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // ✅ Устанавливаем время окончания фарминга
-    const farmEndTime = new Date();
-    farmEndTime.setDate(farmEndTime.getDate() + node.days);
+    // 🟢 Определяем, как считать `days`
+    let farmDurationMs;
+    if (node.days < 1) {
+      farmDurationMs = node.days * 24 * 60 * 60 * 1000; // 🟢 Значение интерпретируется как **секунды**
+      console.log(`🕒 Используем СЕКУНДЫ: ${node.days * 86400} сек.`);
+    } else {
+      farmDurationMs = node.days * 24 * 60 * 60 * 1000; // 🟢 Значение интерпретируется как **дни**
+      console.log(`📆 Используем ДНИ: ${node.days} дней.`);
+    }
 
-    // ✅ Добавляем новую ноду в `activePaidNodes`
+    const farmEndTime = new Date(Date.now() + farmDurationMs);
+
+    // Добавляем ноду в список активных
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
@@ -461,17 +463,23 @@ app.post("/start-paid-farming", async (req, res) => {
       days: node.days,
       rewardTon: node.rewardTon,
       rewardOnex: node.rewardOnex,
-      farmEndTime: farmEndTime
+      farmEndTime: farmEndTime,
+      status: "таймер"
     });
 
     await user.save();
 
-    console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание ${farmEndTime}`);
+    console.log(`✅ Платная нода ${node._id} запущена пользователем ${userId}, окончание фарминга: ${farmEndTime}`);
 
-    res.json({ success: true, message: "Нода запущена!", farmEndTime, activePaidNodes: user.activePaidNodes });
+    res.json({
+      success: true,
+      message: "Нода запущена!",
+      farmEndTime,
+      activePaidNodes: user.activePaidNodes
+    });
 
   } catch (error) {
-    console.error("❌ Ошибка при запуске платной ноды:", error);
+    console.error("❌ Ошибка при запуске платного фарминга:", error);
     res.status(500).json({ error: "Ошибка сервера" });
   }
 });

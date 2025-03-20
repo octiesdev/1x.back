@@ -76,6 +76,10 @@ const UserSchema = new mongoose.Schema({
                 required: true
             },     
             
+            status: {
+                type: String,
+                default: "таймер" // "таймер" (активная) -> "зафармлено" (готово к выплате)
+            }
         }
     ],
 
