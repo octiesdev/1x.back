@@ -75,13 +75,23 @@ const UserSchema = new mongoose.Schema({
                 type: Date,
                 required: true
             },     
-            
+
             status: {
                 type: String,
-                default: "таймер" // "таймер" (активная) -> "зафармлено" (готово к выплате)
+                default: "таймер" 
             }
         }
     ],
+
+    purchasedPaidNodes: [
+        {
+            nodeId: mongoose.Schema.Types.ObjectId, 
+            stake: Number,  
+            rewardTon: Number,
+            status: String,  
+            farmEndTime: Date
+        }
+    ]
 
 });
 

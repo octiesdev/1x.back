@@ -564,6 +564,60 @@ app.post("/get-paid-farming-status", async (req, res) => {
   }
 });
 
+app.post("/finish-paid-farming", async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) return res.status(400).json({ error: "❌ userId обязателен!" });
+
+    let user = await User.findOne({ telegramId: userId });
+
+    if (!user) return res.status(404).json({ error: "❌ Пользователь не найден!" });
+
+    const now = new Date();
+    let totalReward = 0;
+    let updatedNodes = [];
+    let finishedNodes = [];
+
+    console.log(`📌 Проверка платных нод для userId: ${userId} в ${now}`);
+
+    user.activePaidNodes.forEach(node => {
+      if (new Date(node.farmEndTime) <= now && node.status !== "зафармлено") {
+        let reward = node.stake + node.rewardTon;
+        totalReward += reward;
+        node.status = "зафармлено"; 
+
+        // ✅ Сохраняем **в истории**, но НЕ отправляем на фронт
+        finishedNodes.push({
+          nodeId: node.nodeId,
+          stake: node.stake,
+          rewardTon: node.rewardTon,
+          status: "зафармлено",
+          farmEndTime: node.farmEndTime
+        });
+
+        console.log(`✅ Нода ${node.nodeId} завершена! Начисляем ${reward} TON.`);
+      } else {
+        updatedNodes.push(node);
+      }
+    });
+
+    if (totalReward > 0) {
+      user.balance += totalReward;
+      user.activePaidNodes = updatedNodes;
+      user.purchasedPaidNodes = [...user.purchasedPaidNodes, ...finishedNodes]; // ✅ **Добавляем в базу, но не отправляем во фронт**
+      await user.save();
+      console.log(`💰 Баланс обновлен! Новый баланс: ${user.balance}`);
+    }
+
+    // ✅ Отправляем только активные ноды и баланс (БЕЗ ИСТОРИИ)
+    res.json({ success: true, activePaidNodes: user.activePaidNodes, balance: user.balance });
+  } catch (error) {
+    console.error("❌ Ошибка при завершении платного фарминга:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);
