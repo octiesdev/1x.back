@@ -432,44 +432,42 @@ app.post("/start-paid-farming", async (req, res) => {
     const { userId, nodeId } = req.body;
 
     if (!userId || !nodeId) {
-      return res.status(400).json({ error: "❌ userId и nodeId обязательны!" });
+      return res.status(400).json({ error: "userId и nodeId обязательны!" });
     }
 
     let user = await User.findOne({ telegramId: userId });
-    let node = await getNodeById(nodeId); // Получаем данные ноды
 
     if (!user) {
-      console.error("❌ Ошибка: Пользователь не найден!", { userId });
-      return res.status(404).json({ error: "❌ Пользователь не найден!" });
+      return res.status(404).json({ error: "Пользователь не найден" });
     }
 
-    if (!node) {
-      console.error("❌ Ошибка: Нода не найдена!", { nodeId });
-      return res.status(404).json({ error: "❌ Нода не найдена!" });
+    // 🔥 Запрашиваем информацию о ноде с админ-бэкенда
+    const nodeResponse = await axios.get(`https://adminviber1x-production.up.railway.app/onex-nodes/${nodeId}`);
+
+    if (!nodeResponse.data) {
+      return res.status(404).json({ error: "Нода не найдена!" });
     }
 
+    const node = nodeResponse.data;
+
+    // 🔥 Проверяем, запустил ли пользователь уже эту ноду
     if (user.activePaidNodes.some(n => n.nodeId.toString() === nodeId)) {
-      console.error("❌ Ошибка: Пользователь уже запустил эту ноду!", { userId, nodeId });
       return res.status(400).json({ error: "Вы уже запустили эту ноду!" });
     }
 
+    // 🔥 Проверяем баланс пользователя
     if (user.balance < node.stake) {
-      console.error("❌ Ошибка: Недостаточно средств!", { userId, balance: user.balance, stake: node.stake });
       return res.status(400).json({ error: "Недостаточно средств!" });
     }
 
     // ✅ Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // ✅ Рассчитываем окончание фарминга
-    const now = new Date();
-    const farmDurationMs = node.days * 24 * 60 * 60 * 1000; // Дни → миллисекунды
-    const farmEndTime = new Date(now.getTime() + farmDurationMs);
+    // ✅ Устанавливаем время окончания фарминга
+    const farmEndTime = new Date();
+    farmEndTime.setDate(farmEndTime.getDate() + node.days);
 
-    // ✅ Рассчитываем `totalReward`
-    const totalReward = node.stake + node.rewardTon;
-
-    // ✅ Добавляем ноду в список активных
+    // ✅ Добавляем новую ноду в `activePaidNodes`
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
@@ -478,101 +476,17 @@ app.post("/start-paid-farming", async (req, res) => {
       days: node.days,
       rewardTon: node.rewardTon,
       rewardOnex: node.rewardOnex,
-      totalReward, // ✅ Добавляем `totalReward`
       farmEndTime: farmEndTime
     });
 
     await user.save();
 
-    console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание фарминга: ${farmEndTime}`);
+    console.log(`✅ Платная нода #${node.index} запущена пользователем ${userId}, окончание ${farmEndTime}`);
 
-    res.json({
-      success: true,
-      message: "Нода запущена!",
-      farmEndTime,
-      activePaidNodes: user.activePaidNodes.map(n => ({ // ✅ Убираем `totalReward`
-        nodeId: n.nodeId,
-        section: n.section,
-        stake: n.stake,
-        apy: n.apy,
-        days: n.days,
-        rewardTon: n.rewardTon,
-        rewardOnex: n.rewardOnex,
-        farmEndTime: n.farmEndTime
-      }))
-    });
+    res.json({ success: true, message: "Нода запущена!", farmEndTime, activePaidNodes: user.activePaidNodes });
 
   } catch (error) {
-    console.error("❌ Критическая ошибка при запуске платного фарминга:", error);
-    res.status(500).json({ error: "Server error", details: error.message });
-  }
-});
-
-app.get("/get-active-paid-nodes", async (req, res) => {
-  try {
-    const { userId } = req.query;
-    if (!userId || userId === "null") { // ✅ Фикс для случая "null"
-      return res.status(400).json({ error: "❌ userId обязателен!" });
-    }
-
-    let user = await User.findOne({ telegramId: userId });
-
-    if (!user) {
-      return res.status(404).json({ error: "❌ Пользователь не найден!" });
-    }
-
-    res.json({ activePaidNodes: user.activePaidNodes });
-  } catch (error) {
-    console.error("❌ Ошибка при получении активных платных нод:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-app.post("/finish-paid-farming", async (req, res) => {
-  try {
-    const { userId } = req.body;
-
-    if (!userId) return res.status(400).json({ error: "❌ userId обязателен!" });
-
-    let user = await User.findOne({ telegramId: userId });
-
-    if (!user) {
-      return res.status(404).json({ error: "❌ Пользователь не найден!" });
-    }
-
-    const now = new Date();
-    let totalReward = 0;
-    let updatedNodes = [];
-
-    console.log(`📌 Проверка платных нод для userId: ${userId} в ${now}`);
-
-    for (const node of user.activePaidNodes) {
-      console.log(`🔍 Проверяем ноду ${node.nodeId} (окончание: ${node.farmEndTime})`);
-
-      if (new Date(node.farmEndTime) <= now) {
-        totalReward += node.totalReward; // ✅ Используем totalReward
-
-        console.log(`✅ Нода завершена! Начисляем ${node.totalReward} TON`);
-
-      } else {
-        updatedNodes.push(node);
-        console.log(`⏳ Нода еще активна: ${node.nodeId}`);
-      }
-    }
-
-    if (totalReward > 0) {
-      console.log(`💰 ДО обновления: Баланс пользователя ${userId}: ${user.balance}`);
-      user.balance += totalReward;
-      user.activePaidNodes = updatedNodes; // Убираем зафармленные
-      await user.save();
-      console.log(`💰 ПОСЛЕ обновления: Баланс пользователя ${userId}: ${user.balance}`);
-
-      return res.json({ success: true, balance: user.balance });
-    } else {
-      return res.json({ success: false, message: "⏳ Нет завершенных нод." });
-    }
-  } catch (error) {
-    console.error("❌ Ошибка при завершении платного фарминга:", error);
+    console.error("❌ Ошибка при запуске платной ноды:", error);
     res.status(500).json({ error: "Ошибка сервера" });
   }
 });
