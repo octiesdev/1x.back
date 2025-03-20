@@ -532,36 +532,30 @@ app.post("/finish-paid-farming", async (req, res) => {
 
     const now = new Date();
     let totalReward = 0;
-    let finishedNodes = [];
 
-    // ✅ Проверяем завершенные ноды
-    user.activePaidNodes = user.activePaidNodes.filter(node => {
+    // ✅ Проверяем активные платные ноды
+    const remainingNodes = [];
+    for (const node of user.activePaidNodes) {
       if (new Date(node.farmEndTime).getTime() <= now.getTime()) { 
         totalReward += node.stake + node.rewardTon; // ✅ Начисляем стоимость + награду
-        finishedNodes.push(node);
-        return false; // Удаляем завершенную ноду
+        console.log(`✅ Нода завершена: ${node.nodeId}, Начисляем ${node.stake + node.rewardTon} TON`);
+      } else {
+        remainingNodes.push(node); // Оставляем активные ноды
       }
-      return true; // Оставляем активные
-    });
+    }
 
-    if (finishedNodes.length > 0) {
-      user.balance += totalReward; // ✅ Добавляем на баланс
-
-      // ✅ Сохраняем историю платных нод
-      if (!user.paidFarmingHistory) {
-        user.paidFarmingHistory = [];
-      }
-      user.paidFarmingHistory.push(...finishedNodes);
-
+    // ✅ Если есть завершенные ноды - обновляем баланс и сохраняем
+    if (totalReward > 0) {
+      user.balance += totalReward; // ✅ Добавляем награду к балансу
+      user.activePaidNodes = remainingNodes; // ✅ Оставляем только активные ноды
       await user.save();
 
       console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
 
       return res.json({
         success: true,
-        message: "🎉 Фарм завершен!",
-        balance: user.balance,
-        history: user.paidFarmingHistory
+        message: `Фарминг завершен, начислено +${totalReward} TON`,
+        balance: user.balance
       });
     } else {
       return res.json({ success: false, message: "⏳ Нет завершенных нод." });
