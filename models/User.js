@@ -74,27 +74,14 @@ const UserSchema = new mongoose.Schema({
             farmEndTime: {
                 type: Date,
                 required: true
-            }
+            },     
+            
+            status: {
+                type: String,
+                default: "таймер" 
+            } 
         }
     ],
-
-    // ✅ Новый массив истории купленных платных нод
-    paidFarmingHistory: [
-        {
-            nodeId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "ONEXs"
-            },
-            section: String,
-            stake: Number,
-            apy: Number,
-            days: Number,
-            rewardTon: Number,
-            rewardOnex: Number,
-            farmStartTime: Date,
-            farmEndTime: Date
-        }
-    ]
 
 });
 

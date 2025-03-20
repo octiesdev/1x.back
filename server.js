@@ -519,60 +519,37 @@ app.get("/get-active-paid-nodes", async (req, res) => {
 app.post("/finish-paid-farming", async (req, res) => {
   try {
     const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: "❌ userId обязателен!" });
-    }
+    if (!userId) return res.status(400).json({ error: "❌ userId обязателен!" });
 
     let user = await User.findOne({ telegramId: userId });
-
-    if (!user) {
-      return res.status(404).json({ error: "❌ Пользователь не найден!" });
-    }
+    if (!user) return res.status(404).json({ error: "❌ Пользователь не найден!" });
 
     const now = new Date();
     let totalReward = 0;
-    let completedNodes = [];
-    let remainingNodes = [];
 
-    // ✅ Проверяем активные платные ноды
+    // ✅ Проверяем активные ноды
     for (const node of user.activePaidNodes) {
-      if (!node || !node.farmEndTime) continue; // Пропускаем некорректные ноды
-
-      if (new Date(node.farmEndTime).getTime() <= now.getTime()) { 
-        let reward = (node.stake || 0) + (node.rewardTon || 0);
-        totalReward += reward; // ✅ Начисляем стоимость + награду
-        completedNodes.push(node);
-        console.log(`✅ Завершена нода: ${node.nodeId}, Начисляем: ${reward} TON`);
-      } else {
-        remainingNodes.push(node); // ✅ Оставляем активные ноды
+      if (new Date(node.farmEndTime) <= now && node.status !== "зафармлено") {
+        totalReward += node.stake + node.rewardTon;
+        node.status = "зафармлено"; // ✅ Обновляем статус
+        console.log(`✅ Нода #${node.nodeId} завершена! Начисляем ${node.stake + node.rewardTon} TON`);
       }
     }
 
-    // ✅ Если есть завершенные ноды - обновляем баланс и сохраняем
-    if (completedNodes.length > 0) {
-      user.balance += totalReward; // ✅ Добавляем награду к балансу
-      user.activePaidNodes = remainingNodes; // ✅ Обновляем список активных нод
+    // ✅ Обновляем баланс, если есть награды
+    if (totalReward > 0) {
+      user.balance += totalReward;
       await user.save();
-
-      console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
-
-      return res.json({
-        success: true,
-        message: `Фарминг завершен, начислено +${totalReward} TON`,
-        balance: user.balance
-      });
+      console.log(`✅ Баланс обновлен: +${totalReward} TON для ${userId}, новый баланс: ${user.balance}`);
+      return res.json({ success: true, balance: user.balance });
     } else {
       return res.json({ success: false, message: "⏳ Нет завершенных нод." });
     }
-
   } catch (error) {
     console.error("❌ Ошибка при завершении платного фарминга:", error);
     res.status(500).json({ error: "Ошибка сервера" });
   }
 });
-
-
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
