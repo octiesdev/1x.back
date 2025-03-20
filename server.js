@@ -436,7 +436,7 @@ app.post("/start-paid-farming", async (req, res) => {
     }
 
     let user = await User.findOne({ telegramId: userId });
-    let node = await getNodeById(nodeId);
+    let node = await getNodeById(nodeId); // Получаем данные ноды
 
     if (!user) {
       console.error("❌ Ошибка: Пользователь не найден!", { userId });
@@ -458,15 +458,18 @@ app.post("/start-paid-farming", async (req, res) => {
       return res.status(400).json({ error: "Недостаточно средств!" });
     }
 
-    // Вычитаем ставку из баланса
+    // ✅ Вычитаем ставку из баланса
     user.balance -= node.stake;
 
-    // Рассчитываем время окончания фарминга
+    // ✅ Рассчитываем окончание фарминга
     const now = new Date();
-    const farmDurationMs = node.days * 24 * 60 * 60 * 1000; // Дни -> миллисекунды
+    const farmDurationMs = node.days * 24 * 60 * 60 * 1000; // Дни → миллисекунды
     const farmEndTime = new Date(now.getTime() + farmDurationMs);
 
-    // Добавляем ноду в список активных
+    // ✅ Рассчитываем `totalReward`
+    const totalReward = node.stake + node.rewardTon;
+
+    // ✅ Добавляем ноду в список активных
     user.activePaidNodes.push({
       nodeId: node._id,
       section: node.section,
@@ -475,6 +478,7 @@ app.post("/start-paid-farming", async (req, res) => {
       days: node.days,
       rewardTon: node.rewardTon,
       rewardOnex: node.rewardOnex,
+      totalReward, // ✅ Добавляем `totalReward`
       farmEndTime: farmEndTime
     });
 
@@ -486,7 +490,16 @@ app.post("/start-paid-farming", async (req, res) => {
       success: true,
       message: "Нода запущена!",
       farmEndTime,
-      activePaidNodes: user.activePaidNodes
+      activePaidNodes: user.activePaidNodes.map(n => ({ // ✅ Убираем `totalReward`
+        nodeId: n.nodeId,
+        section: n.section,
+        stake: n.stake,
+        apy: n.apy,
+        days: n.days,
+        rewardTon: n.rewardTon,
+        rewardOnex: n.rewardOnex,
+        farmEndTime: n.farmEndTime
+      }))
     });
 
   } catch (error) {
@@ -537,14 +550,10 @@ app.post("/finish-paid-farming", async (req, res) => {
       console.log(`🔍 Проверяем ноду ${node.nodeId} (окончание: ${node.farmEndTime})`);
 
       if (new Date(node.farmEndTime) <= now) {
-        let reward = node.stake + node.rewardTon;
-        totalReward += reward;
+        totalReward += node.totalReward; // ✅ Используем totalReward
 
-        console.log(`✅ Нода завершена! Начисляем ${reward} TON, обновляем статус.`);
+        console.log(`✅ Нода завершена! Начисляем ${node.totalReward} TON`);
 
-        user.activePaidNodes = user.activePaidNodes.map(n =>
-          new Date(n.farmEndTime) <= now ? { ...n, status: "зафармлено" } : n
-        );
       } else {
         updatedNodes.push(node);
         console.log(`⏳ Нода еще активна: ${node.nodeId}`);

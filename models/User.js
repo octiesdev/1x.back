@@ -79,7 +79,12 @@ const UserSchema = new mongoose.Schema({
             status: {
                 type: String,
                 default: "таймер" 
-            } 
+            },
+            
+            totalReward: { // ✅ Добавляем поле, но НЕ отправляем на фронт
+                type: Number,
+                required: true
+            },
         }
     ],
 
