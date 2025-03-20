@@ -518,6 +518,52 @@ app.get("/get-active-paid-nodes", async (req, res) => {
   }
 });
 
+app.post("/get-paid-farming-status", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    console.log(`📌 Проверяем статус платных нод для userId: ${userId}`);
+
+    if (!userId) {
+      return res.status(400).json({ error: "❌ userId обязателен!" });
+    }
+
+    let user = await User.findOne({ telegramId: userId });
+
+    if (!user) {
+      console.log(`❌ Пользователь ${userId} не найден в базе!`);
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const now = new Date();
+    let totalReward = 0;
+    let updatedNodes = [];
+
+    user.activePaidNodes.forEach(node => {
+      if (new Date(node.farmEndTime) <= now && node.status !== "зафармлено") {
+        let reward = node.stake + node.rewardTon; // ✅ Начисляем stake + rewardTon
+        totalReward += reward;
+        node.status = "зафармлено"; // ✅ Меняем статус ноды в памяти
+        console.log(`✅ Нода ${node.nodeId} завершена! Начисляем ${reward} TON.`);
+      } else {
+        updatedNodes.push(node);
+      }
+    });
+
+    if (totalReward > 0) {
+      console.log(`💰 ДО обновления: Баланс пользователя ${userId}: ${user.balance}`);
+      user.balance += totalReward;
+      user.activePaidNodes = updatedNodes; // ✅ Убираем завершенные ноды из списка
+      await user.save();
+      console.log(`💰 ПОСЛЕ обновления: Баланс пользователя ${userId}: ${user.balance}`);
+    }
+
+    res.json({ success: true, activePaidNodes: user.activePaidNodes, balance: user.balance });
+  } catch (error) {
+    console.error("❌ Ошибка при получении статуса платного фарминга:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);
