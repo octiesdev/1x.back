@@ -532,22 +532,27 @@ app.post("/finish-paid-farming", async (req, res) => {
 
     const now = new Date();
     let totalReward = 0;
+    let completedNodes = [];
+    let remainingNodes = [];
 
     // ✅ Проверяем активные платные ноды
-    const remainingNodes = [];
     for (const node of user.activePaidNodes) {
+      if (!node || !node.farmEndTime) continue; // Пропускаем некорректные ноды
+
       if (new Date(node.farmEndTime).getTime() <= now.getTime()) { 
-        totalReward += node.stake + node.rewardTon; // ✅ Начисляем стоимость + награду
-        console.log(`✅ Нода завершена: ${node.nodeId}, Начисляем ${node.stake + node.rewardTon} TON`);
+        let reward = (node.stake || 0) + (node.rewardTon || 0);
+        totalReward += reward; // ✅ Начисляем стоимость + награду
+        completedNodes.push(node);
+        console.log(`✅ Завершена нода: ${node.nodeId}, Начисляем: ${reward} TON`);
       } else {
-        remainingNodes.push(node); // Оставляем активные ноды
+        remainingNodes.push(node); // ✅ Оставляем активные ноды
       }
     }
 
     // ✅ Если есть завершенные ноды - обновляем баланс и сохраняем
-    if (totalReward > 0) {
+    if (completedNodes.length > 0) {
       user.balance += totalReward; // ✅ Добавляем награду к балансу
-      user.activePaidNodes = remainingNodes; // ✅ Оставляем только активные ноды
+      user.activePaidNodes = remainingNodes; // ✅ Обновляем список активных нод
       await user.save();
 
       console.log(`✅ Фарминг завершен! +${totalReward} TON добавлено пользователю ${userId}, новый баланс: ${user.balance}`);
@@ -567,26 +572,7 @@ app.post("/finish-paid-farming", async (req, res) => {
   }
 });
 
-app.get("/get-paid-farming-history", async (req, res) => {
-  try {
-      const { userId } = req.query;
 
-      if (!userId) {
-          return res.status(400).json({ error: "userId обязателен!" });
-      }
-
-      let user = await User.findOne({ telegramId: userId });
-
-      if (!user) {
-          return res.status(404).json({ error: "User not found" });
-      }
-
-      res.json({ history: user.paidFarmingHistory });
-  } catch (error) {
-      console.error("❌ Ошибка при получении истории нод:", error);
-      res.status(500).json({ error: "Server error" });
-  }
-});
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
