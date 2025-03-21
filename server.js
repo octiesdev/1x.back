@@ -186,6 +186,7 @@ bot.onText(/\/start/, async (msg) => {
             user = new User({
                 telegramId: userId,
                 walletAddress: null,
+                username: username,
                 balance: 0.00,
                 processedTransactions: []
             });
@@ -218,7 +219,7 @@ console.log('Бот запущен. Ожидаем команды /start...');
 // ✅ Роут для регистрации пользователя
 app.post("/register-user", async (req, res) => {
   try {
-      const { telegramId } = req.body;
+      const { telegramId, username } = req.body;
 
       if (!telegramId) {
           return res.status(400).json({ error: "telegramId is required" });
@@ -228,11 +229,20 @@ app.post("/register-user", async (req, res) => {
 
       if (!user) {
           console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
-          user = new User({ telegramId, balance: 0.00, walletAddress: null });
+          user = new User({ telegramId, balance: 0.00, username: username || null, walletAddress: null });
           await user.save();
-      }
+      } else {
+      console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
 
-      res.json({ success: true, userId: user.telegramId });
+      // ✅ Обновляем username, если он изменился
+      if (username && user.username !== username) {
+          user.username = username;
+          await user.save();
+          console.log(`✅ Обновлен username для пользователя ${telegramId}: ${username}`);
+      }
+    }
+
+      res.json({ success: true, userId: user.telegramId, username: user.username });
   } catch (error) {
       console.error("❌ Ошибка при регистрации пользователя:", error);
       res.status(500).json({ error: "Internal server error" });
