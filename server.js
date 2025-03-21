@@ -168,6 +168,7 @@ bot.onText(/\/start/, async (msg) => {
 
     const chatId = msg.chat.id;
     const userId = msg.from.id.toString();
+    const username = msg.from.username || null; // ✅ Берём `username`, если есть
     const languageCode = msg.from.language_code || 'en';
     const isRussian = languageCode.startsWith('ru');
 
@@ -195,7 +196,15 @@ bot.onText(/\/start/, async (msg) => {
             console.log(`✅ Новый пользователь ${userId} добавлен в базу данных`);
         } else {
             console.log(`🔄 Пользователь ${userId} уже зарегистрирован.`);
+
+          // ✅ Если username изменился, обновляем его в базе
+          if (username && user.username !== username) {
+            user.username = username;
+            await user.save();
+            console.log(`✅ Обновлен username для пользователя ${userId}: ${username}`);
+          }
         }
+
 
         await bot.sendPhoto(chatId, imagePath, {
             caption,
