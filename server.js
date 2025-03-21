@@ -11,6 +11,7 @@ const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
 const Farming = require("./models/Farming"); // ✅ Подключаем схему Farming
 
+
 const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
 const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
@@ -569,7 +570,7 @@ app.post("/get-paid-farming-status", async (req, res) => {
       console.log(`💰 ПОСЛЕ обновления: Баланс пользователя ${userId}: ${user.balance}`);
     }
 
-    res.json({ success: true, activePaidNodes: user.activePaidNodes, balance: user.balance });
+    res.json({ success: true, activePaidNodes: user.activePaidNodes, balance: user.balance, purchasedPaidNodes: user.purchasedPaidNodes  });
   } catch (error) {
     console.error("❌ Ошибка при получении статуса платного фарминга:", error);
     res.status(500).json({ error: "Server error" });
