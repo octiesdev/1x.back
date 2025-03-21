@@ -18,6 +18,24 @@ const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRE
 
 const ADMIN_API_URL = "https://adminviber1x-production.up.railway.app"; // Адрес админ-панели
 
+const NOTIFY_BOT_URL = "https://notifyviber1x-production.up.railway.app"; // например: https://notifybot.myapp.com
+
+async function notify(type, payload) {
+  try {
+    const res = await fetch(`${NOTIFY_BOT_URL}/notify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, payload })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Ошибка отправки уведомления: ${res.status}`);
+    }
+  } catch (err) {
+    console.error("❌ Ошибка уведомления:", err);
+  }
+}
+
 async function getNodeById(nodeId) {
     try {
         const response = await fetch(`${ADMIN_API_URL}/onex-nodes/${nodeId}`);
@@ -112,6 +130,9 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
 
         await user.save();
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
+
+
+      await notify("deposit", { userId, amount: amountTON }); // 💸 Уведомление
 
     } catch (error) {
         console.error("❌ Ошибка при обработке транзакции:", error);
@@ -322,6 +343,8 @@ app.post("/start-farming", async (req, res) => {
     farming.availableNodes -= 1;
     await farming.save();
 
+    await notify("free", { userId }); // 🚀 Уведомление
+
     console.log(`✅ Фарминг начат, осталось ${farming.availableNodes} нод`);
     res.json({ success: true, farmEndTime, availableNodes: farming.availableNodes });
   } catch (error) {
@@ -481,6 +504,8 @@ app.post("/start-paid-farming", async (req, res) => {
     });
 
     await user.save();
+
+    await notify("paid", { userId, nodeIndex: node.index, stake: node.stake }); // 🔥 Уведомление
 
     console.log(`✅ Платная нода ${node._id} запущена пользователем ${userId}, окончание фарминга: ${farmEndTime}`);
 
