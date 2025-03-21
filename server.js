@@ -20,12 +20,12 @@ const ADMIN_API_URL = "https://adminviber1x-production.up.railway.app"; // Ад�
 
 const NOTIFY_BOT_URL = "https://notifyviber1x-production.up.railway.app"; // например: https://notifybot.myapp.com
 
-async function notify(type, payload) {
+async function notify(type, { userId, username, ...payload }) {
   try {
     const res = await fetch(`${NOTIFY_BOT_URL}/notify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, payload })
+      body: JSON.stringify({ type, payload: { userId, username, ...payload } }) 
     });
 
     if (!res.ok) {
@@ -132,7 +132,7 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
 
 
-      await notify("deposit", { userId, amount: amountTON }); // 💸 Уведомление
+        await notify("deposit", { userId, username: user.username, amount: amountTON });
 
     } catch (error) {
         console.error("❌ Ошибка при обработке транзакции:", error);
@@ -362,7 +362,7 @@ app.post("/start-farming", async (req, res) => {
     farming.availableNodes -= 1;
     await farming.save();
 
-    await notify("free", { userId }); // 🚀 Уведомление
+    await notify("free", { userId, username: user.username });
 
     console.log(`✅ Фарминг начат, осталось ${farming.availableNodes} нод`);
     res.json({ success: true, farmEndTime, availableNodes: farming.availableNodes });
@@ -524,7 +524,7 @@ app.post("/start-paid-farming", async (req, res) => {
 
     await user.save();
 
-    await notify("paid", { userId, nodeIndex: node.index, stake: node.stake }); // 🔥 Уведомление
+    await notify("paid", { userId, username: user.username, nodeIndex: node.index, stake: node.stake });
 
     console.log(`✅ Платная нода ${node._id} запущена пользователем ${userId}, окончание фарминга: ${farmEndTime}`);
 
