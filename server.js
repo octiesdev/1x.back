@@ -638,6 +638,107 @@ app.get("/get-deposit-history", async (req, res) => {
   res.json({ history: user.depositHistory || [] });
 });
 
+// 2. Роут: Создание ордера на вывод
+app.post("/create-withdraw-order", async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    const parsedAmount = parseFloat(amount);
+
+    if (!userId || isNaN(parsedAmount)) {
+      return res.status(400).json({ error: "userId и сумма обязательны" });
+    }
+
+    if (parsedAmount < 1) {
+      return res.status(400).json({ error: "Минимум 1 TON" });
+    }
+
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+
+    if (user.balance < parsedAmount) {
+      return res.status(400).json({ error: "Недостаточно средств" });
+    }
+    
+    const hasPending = user.withdrawOrders.some(order => order.status === "в обработке");
+    if (hasPending) {
+      return res.status(400).json({ error: "У вас уже есть активный запрос на вывод" });
+    }
+
+    user.balance -= parsedAmount;
+
+    const newOrder = {
+      amount: parsedAmount,
+      status: "в обработке",
+      createdAt: new Date(),
+    };
+
+    user.withdrawOrders.unshift(newOrder);
+    await user.save();
+
+    // 📩 Отправка администратору через notify
+    await notify("withdraw_order", {
+      userId,
+      username: user.username,
+      amount: parsedAmount,
+      deposits: user.depositHistory,
+      purchased: user.purchasedPaidNodes,
+      orderIndex: 0, // Позиция в массиве
+    });
+
+    res.json({ success: true, order: newOrder, balance: user.balance });
+  } catch (err) {
+    console.error("❌ Ошибка создания ордера:", err);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+// 3. Получение ордеров пользователя
+app.get("/get-withdraw-orders", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ orders: user.withdrawOrders || [] });
+  } catch (err) {
+    console.error("❌ Ошибка получения ордеров:", err);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+// 4. Обработка нажатий админом в боте (через notify-бэк)
+// ✅ approve-withdraw/:userId/:index
+app.post("/approve-withdraw", async (req, res) => {
+  const { userId, index } = req.body;
+  const user = await User.findOne({ telegramId: userId });
+
+  if (!user || !user.withdrawOrders[index]) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+
+  user.withdrawOrders[index].status = "выполнен";
+  await user.save();
+  res.json({ success: true });
+});
+
+// ❌ reject-withdraw/:userId/:index
+app.post("/reject-withdraw", async (req, res) => {
+  const { userId, index } = req.body;
+  const user = await User.findOne({ telegramId: userId });
+
+  if (!user || !user.withdrawOrders[index]) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+
+  const refundAmount = user.withdrawOrders[index].amount;
+  user.balance += refundAmount;
+  user.withdrawOrders[index].status = "отклонен";
+  await user.save();
+
+  res.json({ success: true });
+});
+
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);

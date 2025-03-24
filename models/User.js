@@ -127,6 +127,14 @@ const UserSchema = new mongoose.Schema({
         }
     ],
 
+    withdrawOrders: [
+        { 
+            amount: Number,
+            status: String,
+            createdAt: Date 
+        }
+    ],
+
 });
 
 module.exports = mongoose.model("User", UserSchema);
