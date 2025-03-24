@@ -15,7 +15,7 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
 const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
 
-const ADMIN_API_URL = process.env.ADMIN_BOT_URL;
+const ADMIN_API_URL = process.env.ADMIN_API_URL;
 
 const NOTIFY_BOT_URL = process.env.NOTIFY_BOT_URL;
 
