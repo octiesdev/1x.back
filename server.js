@@ -15,16 +15,19 @@ const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
 const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
 
-const ADMIN_API_URL = "https://adminviber1x-production.up.railway.app"; // Адрес админ-панели
+const ADMIN_API_URL = process.env.ADMIN_BOT_URL;
 
-const NOTIFY_BOT_URL = "https://notifyviber1x-production.up.railway.app"; // например: https://notifybot.myapp.com
+const NOTIFY_BOT_URL = process.env.NOTIFY_BOT_URL;
 
 async function notify(type, { userId, username, ...payload }) {
   try {
-    const res = await fetch(`${NOTIFY_BOT_URL}/notify`, {
+    const targetUrl =
+      type === "withdraw_order" ? `${ADMIN_API_URL}/notify` : `${NOTIFY_BOT_URL}/notify`;
+
+    const res = await fetch(targetUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, payload: { userId, username, ...payload } }) 
+      body: JSON.stringify({ type, payload: { userId, username, ...payload } })
     });
 
     if (!res.ok) {
@@ -658,7 +661,7 @@ app.post("/create-withdraw-order", async (req, res) => {
     if (user.balance < parsedAmount) {
       return res.status(400).json({ error: "Недостаточно средств" });
     }
-    
+
     const hasPending = user.withdrawOrders.some(order => order.status === "в обработке");
     if (hasPending) {
       return res.status(400).json({ error: "У вас уже есть активный запрос на вывод" });
