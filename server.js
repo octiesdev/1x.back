@@ -19,23 +19,44 @@ const ADMIN_API_URL = process.env.ADMIN_BOT_URL;
 
 const NOTIFY_BOT_URL = process.env.NOTIFY_BOT_URL;
 
-async function notify(type, { userId, username, ...payload }) {
+// 📦 Обычные уведомления
+async function notifyToNotifyBot(type, payload) {
   try {
-    const targetUrl =
-      type === "withdraw_order" ? `${ADMIN_API_URL}/notify` : `${NOTIFY_BOT_URL}/notify`;
-
-    const res = await fetch(targetUrl, {
+    const res = await fetch(`${NOTIFY_BOT_URL}/notify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, payload: { userId, username, ...payload } })
+      body: JSON.stringify({ type, payload })
     });
 
-    if (!res.ok) {
-      throw new Error(`Ошибка отправки уведомления: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Ошибка отправки уведомления: ${res.status}`);
   } catch (err) {
-    console.error("❌ Ошибка уведомления:", err);
+    console.error("❌ Ошибка отправки в notify-бота:", err);
   }
+}
+
+// 👨‍💻 Уведомления в админ-бота с кнопками
+async function notifyToAdminBot(type, payload) {
+  try {
+    const res = await fetch(`${ADMIN_API_URL}/notify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, payload })
+    });
+
+    if (!res.ok) throw new Error(`Ошибка отправки уведомления: ${res.status}`);
+  } catch (err) {
+    console.error("❌ Ошибка отправки в admin-бота:", err);
+  }
+}
+
+async function notify(type, payload) {
+  const { userId, username, ...rest } = payload;
+
+  if (type === "withdraw_order") {
+    return notifyToAdminBot(type, { userId, username, ...rest });
+  }
+
+  return notifyToNotifyBot(type, { userId, username, ...rest });
 }
 
 async function getNodeById(nodeId) {
