@@ -5,7 +5,6 @@ const mongoose = require("mongoose");
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
 const cors = require("cors");
-const TonWeb = require("tonweb");
 
 const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
@@ -127,6 +126,12 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
 
         user.balance += amountTON;
         user.processedTransactions.push(txHash);
+
+        user.depositHistory.push({
+          amount: amountTON,
+          txHash,
+          createdAt: new Date()
+        });
 
         await user.save();
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
@@ -619,6 +624,18 @@ app.post("/get-paid-farming-status", async (req, res) => {
     console.error("❌ Ошибка при получении статуса платного фарминга:", error);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+app.get("/get-deposit-history", async (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const user = await User.findOne({ telegramId: userId });
+
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({ history: user.depositHistory || [] });
 });
 
 const PORT = process.env.PORT;

@@ -119,6 +119,14 @@ const UserSchema = new mongoose.Schema({
         }
     ],
 
+    depositHistory: [
+        {
+          amount: Number,
+          txHash: String,
+          createdAt: { type: Date, default: Date.now }
+        }
+    ],
+
 });
 
 module.exports = mongoose.model("User", UserSchema);
