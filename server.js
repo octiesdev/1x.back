@@ -737,7 +737,7 @@ app.post("/approve-withdraw", async (req, res) => {
   const user = await User.findOne({ telegramId: userId });
 
   if (!user || !user.withdrawOrders[index]) {
-    return res.status(404).json({ error: "Order not found" });
+    return res.status(404).json({ error: "Order ot found" });
   }
 
   user.withdrawOrders[index].status = "выполнен";
