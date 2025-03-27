@@ -244,6 +244,11 @@ bot.onText(/\/start/, async (msg) => {
             }
         });
 
+        await notify("start", {
+          userId,
+          username
+        });
+
     } catch (error) {
         console.error('❌ Ошибка при обработке команды /start:', error);
         bot.sendMessage(chatId, isRussian
@@ -254,36 +259,41 @@ bot.onText(/\/start/, async (msg) => {
 
 console.log('Бот запущен. Ожидаем команды /start...');
 
-// ✅ Роут для регистрации пользователя
 app.post("/register-user", async (req, res) => {
   try {
-      const { telegramId, username } = req.body;
+    const { telegramId, username } = req.body;
 
-      if (!telegramId) {
-          return res.status(400).json({ error: "telegramId is required" });
-      }
+    if (!telegramId) {
+      return res.status(400).json({ error: "telegramId is required" });
+    }
 
-      let user = await User.findOne({ telegramId });
+    let user = await User.findOne({ telegramId });
 
-      if (!user) {
-          console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
-          user = new User({ telegramId, balance: 0.00, username: username || null, walletAddress: null });
-          await user.save();
-      } else {
+    if (!user) {
+      console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
+      user = new User({ telegramId, balance: 0.00, username: username || null, walletAddress: null });
+      await user.save();
+
+      // 📩 Уведомляем notificationBot, что пользователь зашел
+      await notify("start", { userId: telegramId, username });
+    } else {
       console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
 
       // ✅ Обновляем username, если он изменился
       if (username && user.username !== username) {
-          user.username = username;
-          await user.save();
-          console.log(`✅ Обновлен username для пользователя ${telegramId}: ${username}`);
+        user.username = username;
+        await user.save();
+        console.log(`✅ Обновлен username для пользователя ${telegramId}: ${username}`);
       }
+
+      // 📩 Уведомляем notificationBot, что пользователь зашел (даже если уже был)
+      await notify("start", { userId: telegramId, username: user.username });
     }
 
-      res.json({ success: true, userId: user.telegramId, username: user.username });
+    res.json({ success: true, userId: user.telegramId, username: user.username });
   } catch (error) {
-      console.error("❌ Ошибка при регистрации пользователя:", error);
-      res.status(500).json({ error: "Internal server error" });
+    console.error("❌ Ошибка при регистрации пользователя:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
