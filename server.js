@@ -710,7 +710,7 @@ app.post("/create-withdraw-order", async (req, res) => {
       orderIndex: 0,
       balance: user.balance.toFixed(2),
       walletAddress: user.walletAddress,
-
+      freeOnex: user.freeOnex,
     });
 
     res.json({ success: true, order: newOrder, balance: user.balance });
