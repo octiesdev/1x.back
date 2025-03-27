@@ -711,7 +711,7 @@ app.post("/create-withdraw-order", async (req, res) => {
       balance: user.balance.toFixed(2),
       walletAddress: user.walletAddress,
       freeOnex: user.freeOnex,
-      activePaidNodes: user.activePaidNodes,
+      active: user.activePaidNodes,
     });
 
     res.json({ success: true, order: newOrder, balance: user.balance });
