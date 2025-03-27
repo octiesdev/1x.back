@@ -706,7 +706,9 @@ app.post("/create-withdraw-order", async (req, res) => {
       amount: parsedAmount,
       deposits: user.depositHistory,
       purchased: user.purchasedPaidNodes,
-      orderIndex: 0, // Позиция в массиве
+      orderIndex: 0,
+      balance: user.balance.toFixed(2),
+      walletAddress: user.walletAddress,
     });
 
     res.json({ success: true, order: newOrder, balance: user.balance });
