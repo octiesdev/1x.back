@@ -1,9 +1,9 @@
+const path = require("path");
 require('dotenv').config();
 const axios = require("axios");
 const express = require("express");
 const mongoose = require("mongoose");
 const TelegramBot = require("node-telegram-bot-api");
-const path = require("path");
 const cors = require("cors");
 
 const DATABASE = process.env.DATABASE;
