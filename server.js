@@ -777,6 +777,30 @@ app.post("/reject-withdraw", async (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/check-subscription", async (req, res) => {
+  const { userId, chatId } = req.body;
+
+  if (!userId || !chatId) {
+    return res.status(400).json({ error: "userId и chatId обязательны!" });
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.ok && data.result) {
+      const status = data.result.status;
+      res.json({ isSubscribed: status !== "left" });
+    } else {
+      res.status(500).json({ error: "Не удалось получить статус подписки" });
+    }
+  } catch (err) {
+    console.error("❌ Ошибка при проверке подписки:", err);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
