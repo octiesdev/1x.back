@@ -9,6 +9,7 @@ const cors = require("cors");
 const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
 const Farming = require("./models/Farming"); // ✅ Подключаем схему Farming
+const Task = require("./models/Task");
 
 
 const TON_API_KEY = process.env.TON_API_KEY;
