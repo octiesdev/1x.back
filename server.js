@@ -793,7 +793,7 @@ app.post("/check-subscription", async (req, res) => {
       const status = data.result.status;
       res.json({ isSubscribed: status !== "left" });
     } else {
-      res.status(500).json({ error: "Не удалось получить статус подписки" });
+      res.status(500).json({ error: "Не удалось получить статус подписки. Убедитесь, что бот является админом в указанном канале или чате." });
     }
   } catch (err) {
     console.error("❌ Ошибка при проверке подписки:", err);

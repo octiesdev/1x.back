@@ -135,6 +135,11 @@ const UserSchema = new mongoose.Schema({
         }
     ],
 
+    completedTasks: {
+        type: [String], 
+        default: [],
+    },
+
 });
 
 module.exports = mongoose.model("User", UserSchema);
