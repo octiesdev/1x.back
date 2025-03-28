@@ -5,7 +5,6 @@ const mongoose = require("mongoose");
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
 const cors = require("cors");
-const Task = require("./models/Task");
 
 const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
