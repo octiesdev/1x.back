@@ -801,6 +801,45 @@ app.post("/check-subscription", async (req, res) => {
   }
 });
 
+app.post("/mark-task-completed", async (req, res) => {
+  try {
+    const { userId, taskId } = req.body;
+
+    if (!userId || !taskId) {
+      return res.status(400).json({ error: "userId и taskId обязательны!" });
+    }
+
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+
+    if (!user.completedTasks.includes(taskId)) {
+      user.completedTasks.push(taskId);
+      await user.save();
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("❌ Ошибка при отметке задания выполненным:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.get("/get-completed-tasks", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) return res.status(400).json({ error: "userId обязателен!" });
+
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+
+    res.json({ completed: user.completedTasks || [] });
+  } catch (error) {
+    console.error("❌ Ошибка при получении выполненных заданий:", error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
