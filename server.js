@@ -840,6 +840,31 @@ app.get("/get-completed-tasks", async (req, res) => {
   }
 });
 
+app.get("/get-user-tasks", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) return res.status(400).json({ error: "userId обязателен!" });
+
+    const user = await User.findOne({ telegramId: userId });
+    const allTasks = await Task.find();
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const completed = user.completedTasks || [];
+
+    const tasks = allTasks.map(task => ({
+      chatId: task.chatId,
+      status: completed.includes(task._id.toString())
+    }));
+
+    res.json({ tasks });
+  } catch (err) {
+    console.error("❌ Ошибка получения заданий:", err);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
