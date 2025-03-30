@@ -959,23 +959,16 @@ app.get("/get-ref-code", async (req, res) => {
 
 app.get("/get-ambassador-data", async (req, res) => {
   const { userId } = req.query;
-  
   if (!userId) return res.status(400).json({ error: "userId is required" });
-  
-  try {
-    const user = await User.findOne({ telegramId: userId });
-  
-    if (!user) return res.status(404).json({ error: "User not found" });
-  
-    res.json({
-      hasAccess: user.hasAmbassadorAccess === true,
-      tonPercent: user.tonPercent || 0,
-      onexPercent: user.onexPercent || 0
-    });
-  } catch (error) {
-    console.error("❌ Ошибка в /get-ambassador-data:", error);
-    res.status(500).json({ error: "Server error" });
-  }
+
+  const user = await User.findOne({ telegramId: userId });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({
+    hasAccess: user.hasAmbassadorAccess || false,
+    tonPercent: user.tonPercent || 0,
+    onexPercent: user.onexPercent || 0
+  });
 });
 
 const PORT = process.env.PORT;
