@@ -286,8 +286,9 @@ app.post("/register-user", async (req, res) => {
     if (!user) {
       console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
     
-      const refCode = generateReferralCode();
-      const referredBy = ref || null;
+    const refCode = generateReferralCode();
+    const inviter = ref ? await User.findOne({ refCode: ref }) : null;
+    const referredBy = inviter ? (inviter.username ? `@${inviter.username}` : `ID:${inviter.telegramId}`) : null;
     
       user = new User({
         telegramId,
@@ -323,12 +324,13 @@ app.post("/register-user", async (req, res) => {
       }
       
       if (ref && !user.referredBy) {
-        user.referredBy = ref;
-        await user.save();
- 
         const inviter = await User.findOne({ refCode: ref });
+        const referredBy = inviter ? (inviter.username ? `@${inviter.username}` : `ID:${inviter.telegramId}`) : null;
+        user.referredBy = referredBy;
+        await user.save();
+
         if (inviter) {
-          const display = user.username ? `@${user.username}` : `ID: ${user.telegramId}`;
+          const display = user.username ? `@${user.username}` : `ID:${user.telegramId}`;
           if (!inviter.referrals.includes(display)) {
             inviter.referrals.push(display);
             await inviter.save();
