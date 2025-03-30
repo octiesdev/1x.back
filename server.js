@@ -930,11 +930,10 @@ app.get("/get-referrals", async (req, res) => {
 
     const referrals = await User.find({ referredBy: userId });
 
-    const list = referrals.map(ref => {
-      const display = ref.username ? `@${ref.username}` : `ID: ${ref.telegramId}`;
-      return `• ${display}`;
-    });
-
+    const list = referrals.map(ref => ({
+      username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`
+    }));
+    
     res.json({ referrals: list, count: list.length });
   } catch (err) {
     console.error("❌ Ошибка при получении рефералов:", err);
