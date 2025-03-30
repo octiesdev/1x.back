@@ -901,12 +901,6 @@ app.get("/get-user-tasks", async (req, res) => {
   }
 });
 
-
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-    console.log(`🌍 Сервер работает на порту ${PORT}`);
-});
-
 app.get("/get-referrals", async (req, res) => {
   try {
     const { userId } = req.query;
@@ -926,3 +920,22 @@ app.get("/get-referrals", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+// сервер: server.js
+app.get("/get-ref-code", async (req, res) => {
+  const telegramId = req.query.userId;
+  if (!telegramId) return res.status(400).json({ error: "userId is required" });
+
+  const user = await User.findOne({ telegramId });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({ refCode: user.refCode });
+});
+
+
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+    console.log(`🌍 Сервер работает на порту ${PORT}`);
+});
+
