@@ -310,13 +310,24 @@ app.post("/register-user", async (req, res) => {
       await notify("start", { userId: telegramId, username });
     } else {
       console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
-
+ 
       if (username && user.username !== username) {
         user.username = username;
         await user.save();
         console.log(`✅ Обновлен username для пользователя ${telegramId}: ${username}`);
       }
-
+      
+      if (ref && !user.referredBy) {
+        user.referredBy = ref;
+        await user.save();
+ 
+        const inviter = await User.findOne({ refCode: ref });
+        if (inviter && !inviter.referrals.includes(user.telegramId)) {
+          inviter.referrals.push(user.telegramId);
+          await inviter.save();
+        }
+      }
+ 
       await notify("start", { userId: telegramId, username: user.username });
     }
 
