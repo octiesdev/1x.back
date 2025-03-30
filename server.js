@@ -300,12 +300,15 @@ app.post("/register-user", async (req, res) => {
     
       await user.save();
     
-      // ✅ Добавляем этого пользователя в массив рефералов пригласившего
+    // ✅ Добавляем этого пользователя в массив рефералов пригласившего
       if (ref) {
         const inviter = await User.findOne({ refCode: ref });
-        if (inviter && !inviter.referrals.includes(telegramId)) {
-          inviter.referrals.push(telegramId);
-          await inviter.save();
+        if (inviter) {
+          const display = username ? `@${username}` : `ID: ${telegramId}`;
+          if (!inviter.referrals.includes(display)) {
+            inviter.referrals.push(display);
+            await inviter.save();
+          }
         }
       }
     
