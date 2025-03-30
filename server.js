@@ -924,10 +924,10 @@ app.get("/get-referrals", async (req, res) => {
 
 // сервер: server.js
 app.get("/get-ref-code", async (req, res) => {
-  const telegramId = req.query.userId;
-  if (!telegramId) return res.status(400).json({ error: "userId is required" });
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId is required" });
 
-  const user = await User.findOne({ telegramId });
+  const user = await User.findOne({ telegramId: userId });
   if (!user) return res.status(404).json({ error: "User not found" });
 
   res.json({ refCode: user.refCode });
