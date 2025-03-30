@@ -262,7 +262,7 @@ console.log('Бот запущен. Ожидаем команды /start...');
 
 app.post("/register-user", async (req, res) => {
   try {
-    const { telegramId, username } = req.body;
+    const { telegramId, username, ref } = req.body;
 
     if (!telegramId) {
       return res.status(400).json({ error: "telegramId is required" });
@@ -271,8 +271,18 @@ app.post("/register-user", async (req, res) => {
     let user = await User.findOne({ telegramId });
 
     if (!user) {
+      const referralCode = telegramId; // Используем telegramId как уникальный код
+      const referredBy = ref || null;
+
       console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
-      user = new User({ telegramId, balance: 0.00, username: username || null, walletAddress: null });
+      user = new User({
+        telegramId,
+        username: username || null,
+        balance: 0.00,
+        walletAddress: null,
+        referralCode,
+        referredBy,
+      });
       await user.save();
 
       // 📩 Уведомляем notificationBot, что пользователь зашел
@@ -280,18 +290,22 @@ app.post("/register-user", async (req, res) => {
     } else {
       console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
 
-      // ✅ Обновляем username, если он изменился
       if (username && user.username !== username) {
         user.username = username;
         await user.save();
         console.log(`✅ Обновлен username для пользователя ${telegramId}: ${username}`);
       }
 
-      // 📩 Уведомляем notificationBot, что пользователь зашел (даже если уже был)
       await notify("start", { userId: telegramId, username: user.username });
     }
 
-    res.json({ success: true, userId: user.telegramId, username: user.username });
+    res.json({
+      success: true,
+      userId: user.telegramId,
+      username: user.username,
+      referralCode: user.referralCode,
+      referredBy: user.referredBy
+    });
   } catch (error) {
     console.error("❌ Ошибка при регистрации пользователя:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -870,4 +884,24 @@ app.get("/get-user-tasks", async (req, res) => {
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);
+});
+
+app.get("/get-referrals", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    const referrals = await User.find({ referredBy: userId });
+
+    const list = referrals.map(ref => ({
+      username: ref.username || null,
+      telegramId: ref.telegramId
+    }));
+
+    res.json({ referrals: list });
+  } catch (err) {
+    console.error("❌ Ошибка при получении рефералов:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
