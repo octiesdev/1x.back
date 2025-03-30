@@ -925,15 +925,19 @@ app.get("/get-user-tasks", async (req, res) => {
 app.get("/get-referrals", async (req, res) => {
   try {
     const { userId } = req.query;
-
     if (!userId) return res.status(400).json({ error: "userId is required" });
 
-    const referrals = await User.find({ referredBy: userId });
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const refId = user.username ? `@${user.username}` : `ID:${user.telegramId}`;
+
+    const referrals = await User.find({ referredBy: refId });
 
     const list = referrals.map(ref => ({
       username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`
     }));
-    
+
     res.json({ referrals: list, count: list.length });
   } catch (err) {
     console.error("❌ Ошибка при получении рефералов:", err);
