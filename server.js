@@ -212,7 +212,9 @@ bot.onText(/\/start/, async (msg) => {
     const languageCode = msg.from.language_code || 'en';
     const isRussian = languageCode.startsWith('ru');
 
-    const frontendUrl = `${FRONTEND_URL}/?userId=${userId}`;
+    const payload = msg.text?.split(" ") || [];
+    const refCode = payload.length > 1 ? payload[1] : null;
+    const frontendUrl = `${FRONTEND_URL}/?userId=${userId}${refCode ? `&ref=${refCode}` : ""}`;
     console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
     const caption = isRussian ? 'Добро пожаловать! Нажмите кнопку, чтобы продолжить.' : 'Welcome! Click the button to continue.';
