@@ -35,6 +35,15 @@ async function notifyToNotifyBot(type, payload) {
   }
 }
 
+const generateReferralCode = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
 // 👨‍💻 Уведомления в админ-бота с кнопками
 async function notifyToAdminBot(type, payload) {
   try {
@@ -272,18 +281,21 @@ app.post("/register-user", async (req, res) => {
 
     if (!user) {
       console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
-
+    
+      const refCode = generateReferralCode();
+      const referredBy = ref || null;
+    
       user = new User({
         telegramId,
         username: username || null,
         balance: 0.00,
         walletAddress: null,
-        refCode: telegramId,          // ✅ правильно
-        referredBy: ref || null       // ✅ сохраняем реферала
+        refCode,
+        referredBy
       });
-
+    
       await user.save();
-
+    
       // ✅ Добавляем этого пользователя в массив рефералов пригласившего
       if (ref) {
         const inviter = await User.findOne({ refCode: ref });
@@ -292,7 +304,7 @@ app.post("/register-user", async (req, res) => {
           await inviter.save();
         }
       }
-
+    
       await notify("start", { userId: telegramId, username });
     } else {
       console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
