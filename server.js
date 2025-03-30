@@ -962,7 +962,7 @@ app.get("/get-ambassador-data", async (req, res) => {
   if (!userId) return res.status(400).json({ error: "userId is required" });
 
   const user = await User.findOne({ telegramId: userId });
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "User not fund" });
 
   res.json({
     hasAccess: user.hasAmbassadorAccess || false,
