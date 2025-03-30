@@ -282,7 +282,7 @@ app.post("/register-user", async (req, res) => {
     if (!user) {
       console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
     
-      const refCode = generateReferralCode();
+      const refCode = await generateReferralCode();
       const referredBy = ref || null;
     
       user = new User({

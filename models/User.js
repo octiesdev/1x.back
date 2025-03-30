@@ -140,7 +140,7 @@ const UserSchema = new mongoose.Schema({
         default: [],
     },
 
-    refCode: { type: String, unique: true }, // Уникальный реферальный код (например, telegramId)
+    refCode: { type: String, unique: true, required: true },
     referredBy: { type: String }, // Код того, кто пригласил
     referrals: [{ type: String }] // Массив telegramId приглашённых
 
