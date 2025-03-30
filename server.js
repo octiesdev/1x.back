@@ -327,9 +327,12 @@ app.post("/register-user", async (req, res) => {
         await user.save();
  
         const inviter = await User.findOne({ refCode: ref });
-        if (inviter && !inviter.referrals.includes(user.telegramId)) {
-          inviter.referrals.push(user.telegramId);
-          await inviter.save();
+        if (inviter) {
+          const display = user.username ? `@${user.username}` : `ID: ${user.telegramId}`;
+          if (!inviter.referrals.includes(display)) {
+            inviter.referrals.push(display);
+            await inviter.save();
+          }
         }
       }
  
