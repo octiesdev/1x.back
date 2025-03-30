@@ -957,6 +957,21 @@ app.get("/get-ref-code", async (req, res) => {
   res.json({ refCode: user.refCode });
 });
 
+app.get("/get-ambassador-data", async (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const user = await User.findOne({ telegramId: userId });
+
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({
+    hasAccess: user.hasAmbassadorAccess || false,
+    tonPercent: user.tonPercent || 0,
+    onexPercent: user.onexPercent || 0
+  });
+});
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
