@@ -271,21 +271,28 @@ app.post("/register-user", async (req, res) => {
     let user = await User.findOne({ telegramId });
 
     if (!user) {
-      const referralCode = telegramId; // Используем telegramId как уникальный код
-      const referredBy = ref || null;
-
       console.log(`🚀 Новый пользователь ${telegramId}, создаём...`);
+
       user = new User({
         telegramId,
         username: username || null,
         balance: 0.00,
         walletAddress: null,
-        referralCode,
-        referredBy,
+        refCode: telegramId,          // ✅ правильно
+        referredBy: ref || null       // ✅ сохраняем реферала
       });
+
       await user.save();
 
-      // 📩 Уведомляем notificationBot, что пользователь зашел
+      // ✅ Добавляем этого пользователя в массив рефералов пригласившего
+      if (ref) {
+        const inviter = await User.findOne({ refCode: ref });
+        if (inviter && !inviter.referrals.includes(telegramId)) {
+          inviter.referrals.push(telegramId);
+          await inviter.save();
+        }
+      }
+
       await notify("start", { userId: telegramId, username });
     } else {
       console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
@@ -303,7 +310,7 @@ app.post("/register-user", async (req, res) => {
       success: true,
       userId: user.telegramId,
       username: user.username,
-      referralCode: user.referralCode,
+      refCode: user.refCode,
       referredBy: user.referredBy
     });
   } catch (error) {
@@ -894,12 +901,12 @@ app.get("/get-referrals", async (req, res) => {
 
     const referrals = await User.find({ referredBy: userId });
 
-    const list = referrals.map(ref => ({
-      username: ref.username || null,
-      telegramId: ref.telegramId
-    }));
+    const list = referrals.map(ref => {
+      const display = ref.username ? `@${ref.username}` : `ID: ${ref.telegramId}`;
+      return `• ${display}`;
+    });
 
-    res.json({ referrals: list });
+    res.json({ referrals: list, count: list.length });
   } catch (err) {
     console.error("❌ Ошибка при получении рефералов:", err);
     res.status(500).json({ error: "Server error" });
