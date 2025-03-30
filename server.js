@@ -147,7 +147,8 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
                 telegramId: userId,
                 walletAddress: null,
                 balance: 0.00,
-                processedTransactions: []
+                processedTransactions: [],
+                refCode: generateReferralCode()
             });
 
             await user.save();
@@ -228,7 +229,8 @@ bot.onText(/\/start/, async (msg) => {
                 walletAddress: null,
                 username: username,
                 balance: 0.00,
-                processedTransactions: []
+                processedTransactions: [],
+                refCode: generateReferralCode()
             });
 
             await user.save();
