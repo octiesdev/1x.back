@@ -169,13 +169,6 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         });
 
         await user.save();
-        // 📩 Уведомляем админа о новом депозите
-        await notifyToAdminBot("new_deposit", {
-          userId,
-          username: user.username,
-          amount: amountTON,
-          txHash
-        });
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
 
 
