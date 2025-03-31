@@ -146,7 +146,16 @@ const UserSchema = new mongoose.Schema({
 
     hasAmbassadorAccess: { type: Boolean, default: false },
     tonPercent: { type: Number, default: 0 }, // по умолчанию
-    onexPercent: { type: Number, default: 0 }
+    onexPercent: { type: Number, default: 0 },
+
+    referralRewards: [
+        {
+          telegramId: String,
+          username: String,
+          totalRewardTon: { type: Number, default: 0 }
+        }
+      ],
+      totalEarnedFromReferrals: { type: Number, default: 0 },
 
 });
 
