@@ -961,10 +961,13 @@ app.get("/get-referrals", async (req, res) => {
 
     const referrals = await User.find({ referredBy: refId });
 
-    const list = referrals.map(ref => ({
-      username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`,
-      rewardInTon: ref.referralRewards?.[0]?.totalRewardTon || 0 // или просто ref.totalRewardTon если ты это хранишь так
-    }));
+    const list = referrals.map(ref => {
+      const rewardInfo = user.referralRewards?.find(r => r.telegramId === ref.telegramId);
+      return {
+        username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`,
+        rewardInTon: rewardInfo ? rewardInfo.totalRewardTon : 0
+      };
+    });
 
     res.json({ referrals: list, count: list.length });
   } catch (err) {
