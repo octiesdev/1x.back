@@ -60,7 +60,7 @@ async function notifyToAdminBot(type, payload) {
 }
 
 async function notify(type, payload) {
-  const { userId, username, ...rest } = payload;
+  const { userId, username, amount, referredBy, rewardAmount } = payload;
 
   if (type === "withdraw_order" || type === "referral_deposit") {
     return notifyToAdminBot(type, { userId, username, ...rest });
@@ -188,8 +188,7 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
               userId,
               username: user.username,
               amount: amountTON,
-              inviterId: inviter.telegramId,
-              inviterUsername: inviter.username,
+              referredBy: user.referredBy,
               rewardTon: reward.toFixed(2)
             });
           }
