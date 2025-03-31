@@ -169,30 +169,13 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         });
 
         await user.save();
-        // 🚀 Проверка и отправка награды пригласителю
-        if (user.referredBy) {
-          const inviter = await User.findOne({
-            $or: [
-              { username: user.referredBy.replace(/^@/, "") },
-              { telegramId: user.referredBy.replace(/^ID:/, "") }
-            ]
-          });
-
-          if (inviter && inviter.tonPercent > 0) {
-            const reward = parseFloat((amountTON * inviter.tonPercent / 100).toFixed(2));
-
-            const payload = {
-              referralId: user.telegramId,
-              referralUsername: user.username || null,
-              inviterId: inviter.telegramId,
-              inviterUsername: inviter.username || null,
-              amount: amountTON,
-              reward
-            };
-
-            await notifyToAdminBot("referral_deposit_reward", payload);
-          }
-        }
+        // 📩 Уведомляем админа о новом депозите
+        await notifyToAdminBot("new_deposit", {
+          userId,
+          username: user.username,
+          amount: amountTON,
+          txHash
+        });
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
 
 
