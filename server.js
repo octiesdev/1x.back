@@ -169,12 +169,18 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         });
 
         await user.save();
-        // 📩 Уведомляем админа о новом депозите
+        
+        const inviterDisplay = user?.referredBy || "—";
+        const tonPercent = user?.tonPercent || 0;
+        const royalty = (amountTON * tonPercent / 100).toFixed(2);
+        
         await notifyToAdminBot("new_deposit", {
           userId,
           username: user.username,
           amount: amountTON,
-          txHash
+          txHash,
+          inviterDisplay,
+          royalty
         });
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
 
