@@ -779,6 +779,8 @@ app.post("/create-withdraw-order", async (req, res) => {
       walletAddress: user.walletAddress,
       freeOnex: user.freeOnex,
       active: user.activePaidNodes,
+      referredBy: user.referredBy,
+      hasAmbassadorAccess: user.hasAmbassadorAccess || false
     });
 
     res.json({ success: true, order: newOrder, balance: user.balance });
