@@ -171,7 +171,18 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         await user.save();
 
         const inviterDisplay = user?.referredBy || "—";
-        const tonPercent = user?.tonPercent || 0;
+        let inviter = null;
+        if (user.referredBy) {
+          const refCode = user.referredBy;
+          inviter = await User.findOne({
+            $or: [
+              { username: refCode.replace(/^@/, "") },
+              { telegramId: refCode.replace(/^ID:/, "") }
+            ]
+          });
+        }
+
+        const tonPercent = inviter?.tonPercent || 0;
         const royalty = (amountTON * tonPercent / 100).toFixed(2);
         
         await notifyToAdminBot("new_deposit", {
