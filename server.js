@@ -62,10 +62,10 @@ async function notifyToAdminBot(type, payload) {
 async function notify(type, payload) {
   const { userId, username, ...rest } = payload;
 
-  if (type === "withdraw_order") {
+  if (type === "withdraw_order" || type === "referral_deposit") {
     return notifyToAdminBot(type, { userId, username, ...rest });
   }
-
+ 
   return notifyToNotifyBot(type, { userId, username, ...rest });
 }
 
