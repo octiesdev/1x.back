@@ -962,7 +962,8 @@ app.get("/get-referrals", async (req, res) => {
     const referrals = await User.find({ referredBy: refId });
 
     const list = referrals.map(ref => ({
-      username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`
+      username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`,
+      rewardInTon: ref.referralRewards?.[0]?.totalRewardTon || 0 // или просто ref.totalRewardTon если ты это хранишь так
     }));
 
     res.json({ referrals: list, count: list.length });
