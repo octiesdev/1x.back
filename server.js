@@ -169,7 +169,7 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         });
 
         await user.save();
-        
+
         const inviterDisplay = user?.referredBy || "—";
         const tonPercent = user?.tonPercent || 0;
         const royalty = (amountTON * tonPercent / 100).toFixed(2);
@@ -188,7 +188,7 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         await notify("deposit", { userId, username: user.username, amount: amountTON });
 
     } catch (error) {
-        console.error("❌ Ошибка при обработке транзакции:", error);
+        console.error("❌ Ошибка при обработке тразакции:", error);
     }
 };
 
