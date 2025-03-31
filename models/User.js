@@ -150,20 +150,15 @@ const UserSchema = new mongoose.Schema({
 
     referralRewards: [
         {
-          telegramId: String,
-          username: String,
-          totalRewardTon: { type: Number, default: 0 },
-          deposits: [
-            {
-              fromUser: String, // username или userId
-              amount: Number, // сумма депозита
-              reward: Number, // начисленная награда
-              date: { type: Date, default: Date.now }
-            }
-          ]
+          referralId: String,
+          referralUsername: String,
+          depositAmount: Number,
+          rewardTon: Number,
+          date: { type: Date, default: Date.now }
         }
       ],
-      totalEarnedFromReferrals: { type: Number, default: 0 },
+    totalEarnedFromReferrals: { type: Number, default: 0 },
+
 
 });
 
