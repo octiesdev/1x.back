@@ -60,12 +60,12 @@ async function notifyToAdminBot(type, payload) {
 }
 
 async function notify(type, payload) {
-  const { userId, username, amount, referredBy, rewardAmount } = payload;
+  const { userId, username, ...rest } = payload;
 
-  if (type === "withdraw_order" || type === "referral_deposit") {
+  if (type === "withdraw_order") {
     return notifyToAdminBot(type, { userId, username, ...rest });
   }
- 
+
   return notifyToNotifyBot(type, { userId, username, ...rest });
 }
 
@@ -173,26 +173,6 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
 
 
         await notify("deposit", { userId, username: user.username, amount: amountTON });
-        // 🔔 Уведомление для админки с кнопками начисления награды за депозит
-        if (user.referredBy && user.referredBy !== "—") {
-          const inviter = await User.findOne({
-            $or: [
-              { username: user.referredBy.replace(/^@/, "") },
-              { telegramId: user.referredBy.replace(/^ID:/, "") }
-            ]
-          });
- 
-          if (inviter && inviter.tonPercent > 0) {
-            const reward = (amountTON * inviter.tonPercent) / 100;
-            await notifyToAdminBot("referral_deposit", {
-              userId,
-              username: user.username,
-              amount: amountTON,
-              referredBy: user.referredBy,
-              rewardTon: reward.toFixed(2)
-            });
-          }
-        }
 
     } catch (error) {
         console.error("❌ Ошибка при обработке транзакции:", error);
@@ -835,41 +815,6 @@ app.post("/approve-withdraw", async (req, res) => {
   }
 
   user.withdrawOrders[index].status = "выполнен";
-
-  const deposit = user.depositHistory?.[index];
-  const rewardAmount = deposit?.amount || 0;
-  const inviterRef = user.referredBy;
-
-  if (inviterRef && rewardAmount > 0) {
-    const refMatch = inviterRef.match(/@(.+)|ID:(\d+)/);
-    const inviterQuery = refMatch?.[1]
-      ? { username: refMatch[1] }
-      : { telegramId: refMatch[2] };
-
-    if (inviterQuery) {
-      const inviter = await User.findOne(inviterQuery);
-      if (inviter && inviter.tonPercent > 0) {
-        const rewardTon = parseFloat((rewardAmount * inviter.tonPercent / 100).toFixed(2));
-
-        inviter.totalEarnedFromReferrals = (inviter.totalEarnedFromReferrals || 0) + rewardTon;
-
-        // Обновим или добавим в массив наград
-        const existing = inviter.referralRewards.find(r => r.telegramId === user.telegramId);
-        if (existing) {
-          existing.totalRewardTon += rewardTon;
-        } else {
-          inviter.referralRewards.push({
-            telegramId: user.telegramId,
-            username: user.username || `ID:${user.telegramId}`,
-            totalRewardTon: rewardTon
-          });
-        }
-
-        inviter.balance += rewardTon;
-        await inviter.save();
-      }
-    }
-  }
   await user.save();
   res.json({ success: true });
 });
@@ -992,8 +937,7 @@ app.get("/get-referrals", async (req, res) => {
     const referrals = await User.find({ referredBy: refId });
 
     const list = referrals.map(ref => ({
-      username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`,
-      totalRewardTon: ref.totalEarnedFromReferrals || 0
+      username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`
     }));
 
     res.json({ referrals: list, count: list.length });
@@ -1033,4 +977,3 @@ const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);
 });
-
