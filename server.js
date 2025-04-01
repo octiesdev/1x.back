@@ -53,7 +53,7 @@ async function notifyToAdminBot(type, payload) {
       body: JSON.stringify({ type, payload })
     });
 
-    if (!res.ok) throw new Error(`Ошибка отправки уведомления: ${res.status}`);
+    if (!res.ok) throw new Error(`Ошибка отпраки уведомления: ${res.status}`);
   } catch (err) {
     console.error("❌ Ошибка отправки в admin-бота:", err);
   }
