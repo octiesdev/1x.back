@@ -415,7 +415,10 @@ app.get("/get-balance", async (req, res) => {
           return res.status(404).json({ error: "User not found" });
       }
 
-      res.json({ balance: parseFloat(user.balance).toFixed(2) });
+      res.json({
+        balance: parseFloat(user.balance).toFixed(2),
+        onexBalance: parseFloat(user.onexBalance || 0).toFixed(2)
+      });
   } catch (error) {
       console.error("❌ Ошибка при получении баланса:", error);
       res.status(500).json({ error: "Internal server error" });
