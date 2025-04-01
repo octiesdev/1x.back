@@ -122,7 +122,8 @@ const UserSchema = new mongoose.Schema({
             },
             rewardOnex: {
                 type: Number,
-                required: true
+                required: true,
+                default: 0
             },
         }
     ],
