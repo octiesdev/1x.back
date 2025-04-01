@@ -416,8 +416,8 @@ app.get("/get-balance", async (req, res) => {
       }
 
       res.json({
-        balance: parseFloat(user.balance).toFixed(2),
-        onexBalance: parseFloat(user.onexBalance || 0).toFixed(2)
+        balance: parseFloat(user.balance),
+        onexBalance: parseFloat(user.onexBalance || 0)
       });
   } catch (error) {
       console.error("❌ Ошибка при получении баланса:", error);
