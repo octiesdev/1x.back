@@ -713,7 +713,7 @@ app.post("/get-paid-farming-status", async (req, res) => {
         
         user.onexBalance += rewardOnex;
 
-        console.log(`✅ Нода ${node.nodeId} завершена! Начисляем ${reward} TON.`);
+            console.log(`✅ Нода ${node.nodeId} завершена! Начисляем ${rewardTon} TON и ${rewardOnex} ONEX.`);
 
         // ✅ Переносим завершенную ноду в `purchasedPaidNodes`
         user.purchasedPaidNodes.push({
