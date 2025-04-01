@@ -13,8 +13,22 @@ const Task = require("./models/Task");
 const Config = require("./models/Config");
 
 const TON_API_KEY = process.env.TON_API_KEY;
-const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
-const API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
+let WALLET_ADDRESS = "";
+
+async function loadWalletAddress() {
+  try {
+    const config = await Config.findOne();
+    if (config?.depositAddress) {
+      WALLET_ADDRESS = config.depositAddress;
+    } else {
+      console.warn("⚠️ Адрес кошелька не найден в базе. Используется значение по умолчанию.");
+      WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
+    }
+  } catch (err) {
+    console.error("❌ Ошибка загрузки адреса из базы:", err);
+    WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
+  }
+}
 
 const ADMIN_API_URL = process.env.ADMIN_API_URL;
 
@@ -217,7 +231,12 @@ async function connectDB() {
     }
 }
 
-connectDB();
+connectDB().then(async () => {
+  await loadWalletAddress();
+  API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
+  console.log("✅ WALLET_ADDRESS загружен:", WALLET_ADDRESS);
+  console.log("✅ API_URL установлен:", API_URL);
+});
 
 const app = express();
 
