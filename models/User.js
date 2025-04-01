@@ -23,6 +23,11 @@ const UserSchema = new mongoose.Schema({
         default: 0.00,
     },
 
+    onexBalance: {
+        type: Number,
+        default: 0.00,
+    },
+
     processedTransactions: {
         type: [String],
         default: [] 
@@ -114,7 +119,11 @@ const UserSchema = new mongoose.Schema({
             createdAt: {
                 type: Date,
                 default: Date.now
-            }
+            },
+            rewardOnex: {
+                type: Number,
+                required: true
+            },
         }
     ],
 
@@ -146,7 +155,7 @@ const UserSchema = new mongoose.Schema({
     hasAmbassadorAccess: { type: Boolean, default: false },
     tonPercent: { type: Number, default: 0 }, // по умолчанию
     onexPercent: { type: Number, default: 0 },
-
+    
     referralRewards: [
         {
           telegramId: String,
