@@ -485,7 +485,7 @@ app.post("/start-farming", async (req, res) => {
     }
 
     if (!farming) {
-      farming = new Farming({ availableNodes: 100 }); // ✅ Создаем запись, если ее нет
+      farming = new Farming({ availableNodes: 100, totalNodes: 100 }); // ✅ Создаем запись, если ее нет
       await farming.save();
     }
 
@@ -608,7 +608,7 @@ app.get("/get-available-nodes", async (req, res) => {
       await farming.save();
     }
 
-    res.json({ availableNodes: farming.availableNodes });
+    res.json({ availableNodes: farming.availableNodes, totalNodes: farming.totalNodes });
   } catch (error) {
     console.error("❌ Ошибка при получении доступных нод:", error);
     res.status(500).json({ error: "Server error" });
@@ -1086,4 +1086,29 @@ app.post("/admin/update-config", async (req, res) => {
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`🌍 Сервер работает на порту ${PORT}`);
+});
+
+app.post("/admin/update-nodes", async (req, res) => {
+  try {
+    const { availableNodes, totalNodes } = req.body;
+
+    const farming = await Farming.findOne();
+    if (!farming) {
+      return res.status(404).json({ error: "Farming config not found" });
+    }
+
+    if (typeof availableNodes === "number") {
+      farming.availableNodes = availableNodes;
+    }
+
+    if (typeof totalNodes === "number") {
+      farming.totalNodes = totalNodes;
+    }
+
+    await farming.save();
+    res.json({ success: true, availableNodes: farming.availableNodes, totalNodes: farming.totalNodes });
+  } catch (err) {
+    console.error("Ошибка при обновлении нод:", err);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
 });

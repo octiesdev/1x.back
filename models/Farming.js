@@ -5,6 +5,10 @@ const farmingSchema = new mongoose.Schema({
   availableNodes: {
     type: Number,
     default: 100 
+  },
+  totalNodes: {
+    type: Number,
+    default: 100
   }
 });
 
