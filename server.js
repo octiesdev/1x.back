@@ -720,7 +720,7 @@ app.post("/get-paid-farming-status", async (req, res) => {
           nodeId: node.nodeId,
           stake: node.stake,
           rewardTon: node.rewardTon,
-          rewardOnex: node.rewardOnex,
+          rewardOnex: node.rewardOnex || 0,
           apy: node.apy,
           days: node.days,
           farmEndTime: node.farmEndTime,
