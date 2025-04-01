@@ -1042,7 +1042,9 @@ app.get("/admin/get-config", async (req, res) => {
 app.post("/admin/update-config", async (req, res) => {
   try {
     const { depositAddress } = req.body;
-    if (!depositAddress) return res.status(400).json({ error: "depositAddress is required" });
+    if (!depositAddress || typeof depositAddress !== "string") {
+      return res.status(400).json({ error: "depositAddress is required and must be a string" });
+    }
 
     let config = await Config.findOne();
     if (!config) {
