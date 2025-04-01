@@ -913,8 +913,15 @@ app.post("/mark-task-completed", async (req, res) => {
     const user = await User.findOne({ telegramId: userId });
     if (!user) return res.status(404).json({ error: "Пользователь не найден" });
 
+    const task = await Task.findById(taskId);
+    if (!task) return res.status(404).json({ error: "Задание не найдено" });
+
+    // ✅ Начисление points → onexBalance
+    user.onexBalance += task.points;
+
     if (!user.completedTasks.includes(taskId)) {
       user.completedTasks.push(taskId);
+      user.onexBalance += task.points;
       await user.save();
     }
 
