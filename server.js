@@ -732,22 +732,13 @@ app.post("/get-paid-farming-status", async (req, res) => {
         updatedNodes.push(node); // Оставляем активные ноды
       }
     }
-    
-    if (totalReward > 0 || totalOnexReward > 0) {
-      console.log(`💰 ДО обновления: Баланс TON: ${user.balance}, ONEX: ${user.onexBalance}`);
-    
-      if (totalReward > 0) {
-        user.balance += totalReward;
-      }
-    
-      if (totalOnexReward > 0) {
-        user.onexBalance += totalOnexReward;
-      }
-    
+
+    if (totalReward > 0) {
+      console.log(`💰 ДО обновления: Баланс пользователя ${userId}: ${user.balance}`);
+      user.balance += totalReward;
       user.activePaidNodes = updatedNodes; // ✅ Убираем завершенные ноды из активных
       await user.save();
-    
-      console.log(`💰 ПОСЛЕ обновления: Баланс TON: ${user.balance}, ONEX: ${user.onexBalance}`);
+      console.log(`💰 ПОСЛЕ обновления: Баланс пользователя ${userId}: ${user.balance}`);
     }
 
     res.json({ success: true, activePaidNodes: user.activePaidNodes, balance: user.balance, purchasedPaidNodes: user.purchasedPaidNodes  });
