@@ -711,7 +711,7 @@ app.post("/get-paid-farming-status", async (req, res) => {
         totalReward += rewardTon;
         totalRewardOnex += rewardOnex;
         
-        user.onexBalance += rewardOnex;
+        // user.onexBalance += rewardOnex; // удалено, начисление производится позже глобально через totalRewardOnex
 
             console.log(`✅ Нода ${node.nodeId} завершена! Начисляем ${rewardTon} TON и ${rewardOnex} ONEX.`);
 
@@ -733,12 +733,21 @@ app.post("/get-paid-farming-status", async (req, res) => {
       }
     }
 
-    if (totalReward > 0) {
-      console.log(`💰 ДО обновления: Баланс пользователя ${userId}: ${user.balance}`);
-      user.balance += totalReward;
+    if (totalReward > 0 || totalRewardOnex > 0) {
+      console.log(`💰 ДО обновления: Баланс TON: ${user.balance}, ONEX: ${user.onexBalance}`);
+    
+      if (totalReward > 0) {
+        user.balance += totalReward;
+      }
+    
+      if (totalRewardOnex > 0) {
+        user.onexBalance += totalRewardOnex;
+      }
+    
       user.activePaidNodes = updatedNodes; // ✅ Убираем завершенные ноды из активных
       await user.save();
-      console.log(`💰 ПОСЛЕ обновления: Баланс пользователя ${userId}: ${user.balance}`);
+    
+      console.log(`💰 ПОСЛЕ обновления: Баланс TON: ${user.balance}, ONEX: ${user.onexBalance}`);
     }
 
     res.json({ success: true, activePaidNodes: user.activePaidNodes, balance: user.balance, purchasedPaidNodes: user.purchasedPaidNodes  });
