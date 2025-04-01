@@ -10,7 +10,7 @@ const DATABASE = process.env.DATABASE;
 const User = require("./models/User");
 const Farming = require("./models/Farming"); // ✅ Подключаем схему Farming
 const Task = require("./models/Task");
-
+const Config = require("./models/Config");
 
 const TON_API_KEY = process.env.TON_API_KEY;
 const WALLET_ADDRESS = "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs";
@@ -125,6 +125,8 @@ const fetchTransactions = async () => {
         console.error("❌ Ошибка при получении транзакций:", error.response?.data || error.message);
     }
 };
+
+
 
 const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
     try {
@@ -1021,6 +1023,40 @@ app.get("/get-ambassador-data", async (req, res) => {
     tonPercent: user.tonPercent || 0,
     onexPercent: user.onexPercent || 0
   });
+});
+
+app.get("/admin/get-config", async (req, res) => {
+  try {
+    let config = await Config.findOne();
+    if (!config) {
+      config = new Config({ depositAddress: "0QBkLTS-N_Cpr4qbHMRXIdVYhWMs3dQVpGSQEl44VS3SNwNs" }); // дефолтный
+      await config.save();
+    }
+    res.json(config);
+  } catch (err) {
+    console.error("❌ Ошибка при получении конфигурации:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/admin/update-config", async (req, res) => {
+  try {
+    const { depositAddress } = req.body;
+    if (!depositAddress) return res.status(400).json({ error: "depositAddress is required" });
+
+    let config = await Config.findOne();
+    if (!config) {
+      config = new Config({ depositAddress });
+    } else {
+      config.depositAddress = depositAddress;
+    }
+
+    await config.save();
+    res.json({ success: true, depositAddress });
+  } catch (err) {
+    console.error("❌ Ошибка при обновлении конфигурации:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 const PORT = process.env.PORT;
