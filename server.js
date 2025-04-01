@@ -100,6 +100,9 @@ const hexToUtf8 = (hex) => {
 
 const fetchTransactions = async () => {
     try {
+        await loadWalletAddress();
+        API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
+        
         const response = await axios.get(API_URL, {
             headers: { Authorization: `Bearer ${TON_API_KEY}` },
             params: { limit: 5, decode: 1 }
