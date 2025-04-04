@@ -968,6 +968,40 @@ app.post("/mark-task-completed", async (req, res) => {
     if (!user.completedTasks.includes(taskId)) {
       user.completedTasks.push(taskId);
       user.onexBalance += task.points;
+      
+      // ✅ Автоматически начисляем ONEX роялти пригласителю
+      if (user.referredBy) {
+        const refCode = user.referredBy;
+        const inviter = await User.findOne({
+          $or: [
+            { username: refCode.replace(/^@/, "") },
+            { telegramId: refCode.replace(/^ID:/, "") }
+          ]
+        });
+ 
+        if (inviter) {
+          const onexPercent = inviter.onexPercent || 0;
+          const royaltyOnex = parseFloat((task.points * onexPercent / 100).toFixed(2));
+ 
+          inviter.onexBalance = (inviter.onexBalance || 0) + royaltyOnex;
+ 
+          inviter.referralRewards = inviter.referralRewards || [];
+          const existingRef = inviter.referralRewards.find(r => r.telegramId === user.telegramId);
+          if (existingRef) {
+            existingRef.totalRewardOnex = (existingRef.totalRewardOnex || 0) + royaltyOnex;
+          } else {
+            inviter.referralRewards.push({
+              telegramId: user.telegramId,
+              username: user.username,
+              totalRewardOnex: royaltyOnex,
+              totalRewardTon: 0
+            });
+          }
+ 
+          await inviter.save();
+        }
+      }
+      
       await user.save();
     }
 
