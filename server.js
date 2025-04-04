@@ -386,7 +386,11 @@ app.post("/register-user", async (req, res) => {
         }
       }
     
-      await notify("start", { userId: telegramId, username });
+    await notify("start", {
+      userId: telegramId,
+      username: user.username,
+      referredBy: user.referredBy || null
+    });
     } else {
       console.log(`🔄 Пользователь ${telegramId} уже зарегистрирован.`);
  
@@ -411,7 +415,11 @@ app.post("/register-user", async (req, res) => {
         }
       }
  
-      await notify("start", { userId: telegramId, username: user.username });
+      await notify("start", {
+        userId: telegramId,
+        username: user.username,
+        referredBy: user.referredBy || null
+      });
     }
 
     res.json({
