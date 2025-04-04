@@ -499,7 +499,7 @@ app.post("/start-farming", async (req, res) => {
 
     // ✅ Запускаем таймер фарминга
     const farmEndTime = new Date();
-    farmEndTime.setSeconds(farmEndTime.getSeconds() + 20); // 20 секунд для теста
+    farmEndTime.setHours(farmEndTime.getHours() + 12); // 20 секунд для теста
 
     user.freeOnex = "таймер";
     user.farmEndTime = farmEndTime;
