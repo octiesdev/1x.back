@@ -161,10 +161,12 @@ const UserSchema = new mongoose.Schema({
         {
           telegramId: String,
           username: String,
-          totalRewardTon: { type: Number, default: 0 }
+          totalRewardTon: { type: Number, default: 0 },
+          totalRewardOnex: { type: Number, default: 0 } // ⬅️ добавь это
         }
       ],
       totalEarnedFromReferrals: { type: Number, default: 0 },
+      
 
 });
 
