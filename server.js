@@ -792,6 +792,39 @@ app.post("/get-paid-farming-status", async (req, res) => {
       if (totalRewardOnex > 0) {
         user.onexBalance += totalRewardOnex;
       }
+      
+      // ✅ Начисляем ONEX роялти пригласителю
+      if (user.referredBy && totalRewardOnex > 0) {
+        const refCode = user.referredBy;
+        const inviter = await User.findOne({
+          $or: [
+            { username: refCode.replace(/^@/, "") },
+            { telegramId: refCode.replace(/^ID:/, "") }
+          ]
+        });
+      
+        if (inviter) {
+          const onexPercent = inviter.onexPercent || 0;
+          const royaltyOnex = parseFloat((totalRewardOnex * onexPercent / 100).toFixed(2));
+      
+          inviter.onexBalance = (inviter.onexBalance || 0) + royaltyOnex;
+      
+          inviter.referralRewards = inviter.referralRewards || [];
+          const existingRef = inviter.referralRewards.find(r => r.telegramId === user.telegramId);
+          if (existingRef) {
+            existingRef.totalRewardOnex = (existingRef.totalRewardOnex || 0) + royaltyOnex;
+          } else {
+            inviter.referralRewards.push({
+              telegramId: user.telegramId,
+              username: user.username,
+              totalRewardTon: 0,
+              totalRewardOnex: royaltyOnex
+            });
+          }
+      
+          await inviter.save();
+        }
+      }
     
       user.activePaidNodes = updatedNodes; // ✅ Убираем завершенные ноды из активных
       console.log(`💰 ПОСЛЕ обновления: Баланс TON: ${user.balance}, ONEX: ${user.onexBalance}`);
