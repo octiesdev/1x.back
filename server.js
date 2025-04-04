@@ -202,7 +202,31 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
         }
 
         const tonPercent = inviter?.tonPercent || 0;
-        const royalty = (amountTON * tonPercent / 100).toFixed(2);
+        const onexPercent = inviter?.onexPercent || 0;
+        
+        const royaltyTon = parseFloat((amountTON * tonPercent / 100).toFixed(2));
+        const royaltyOnex = parseFloat((amountTON * onexPercent / 100).toFixed(2));
+        
+        if (inviter) {
+          inviter.balance += royaltyTon;
+          inviter.onexBalance = (inviter.onexBalance || 0) + royaltyOnex;
+        
+          inviter.referralRewards = inviter.referralRewards || [];
+        
+          const existing = inviter.referralRewards.find(r => r.telegramId === user.telegramId);
+          if (existing) {
+            existing.totalRewardTon += royaltyTon;
+            existing.totalRewardOnex = (existing.totalRewardOnex || 0) + royaltyOnex;
+          } else {
+            inviter.referralRewards.push({
+              telegramId: user.telegramId,
+              totalRewardTon: royaltyTon,
+              totalRewardOnex: royaltyOnex
+            });
+          }
+        
+          await inviter.save();
+        }
         
         await notifyToAdminBot("new_deposit", {
           userId,
@@ -210,7 +234,8 @@ const processTransaction = async ({ sender, nanoTON, comment, txHash }) => {
           amount: amountTON,
           txHash,
           inviterDisplay,
-          royalty
+          royaltyTon,
+          royaltyOnex
         });
         console.log(`💰 Баланс пользователя ${userId} обновлён: +${amountTON} TON`);
 
@@ -1010,7 +1035,8 @@ app.get("/get-referrals", async (req, res) => {
       const rewardInfo = user.referralRewards?.find(r => r.telegramId === ref.telegramId);
       return {
         username: ref.username ? `@${ref.username}` : `ID:${ref.telegramId}`,
-        rewardInTon: rewardInfo ? rewardInfo.totalRewardTon : 0
+        rewardInTon: rewardInfo ? rewardInfo.totalRewardTon : 0,
+        rewardInOnex: rewardInfo ? rewardInfo.totalRewardOnex || 0 : 0
       };
     });
 
