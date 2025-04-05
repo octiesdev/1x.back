@@ -101,7 +101,7 @@ const hexToUtf8 = (hex) => {
 const fetchTransactions = async () => {
     try {
         await loadWalletAddress();
-        API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
+        API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
         
         const response = await axios.get(API_URL, {
             headers: { Authorization: `Bearer ${TON_API_KEY}` },
@@ -261,7 +261,7 @@ async function connectDB() {
 
 connectDB().then(async () => {
   await loadWalletAddress();
-  API_URL = `https://testnet.tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
+  API_URL = `https://tonapi.io/v2/blockchain/accounts/${WALLET_ADDRESS}/transactions`;
   console.log("✅ WALLET_ADDRESS загружен:", WALLET_ADDRESS);
   console.log("✅ API_URL установлен:", API_URL);
 });
