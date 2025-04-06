@@ -287,6 +287,23 @@ bot.onText(/\/start/, async (msg) => {
 
     const payload = msg.text?.split(" ") || [];
     const refCode = payload.length > 1 ? payload[1] : null;
+    if (refCode === "bot_test") {
+        console.log("🤖 Тестовый запуск — MAU для накрутки. Ничего не сохраняем.");
+
+        const caption = isRussian ? 'Вы запустили бота.' : 'Bot started.';
+        const buttonText = isRussian ? 'Открыть приложение' : 'Open App';
+
+        const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
+        await bot.sendPhoto(chatId, imagePath, {
+            caption,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: buttonText, web_app: { url: FRONTEND_URL } }]
+                ]
+            }
+        });
+        return;
+    }
     const frontendUrl = `${FRONTEND_URL}/?userId=${userId}${refCode ? `&ref=${refCode}` : ""}`;
     console.log(`📌 Ссылка для пользователя: ${frontendUrl}`);
 
