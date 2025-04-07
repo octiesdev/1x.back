@@ -277,6 +277,26 @@ const bot = new TelegramBot(token, { polling: true });
 const FRONTEND_URL = "https://viber-redirect.netlify.app";
 
 bot.onText(/\/start/, async (msg) => {
+    const skipSavingUser = true; // ⬅ Временно отключаем сохранение пользователей
+    if (skipSavingUser) {
+      const chatId = msg.chat.id;
+      const languageCode = msg.from.language_code || 'en';
+      const isRussian = languageCode.startsWith('ru');
+  
+      const caption = isRussian ? 'Вы запустили бота.' : 'Bot started.';
+      const buttonText = isRussian ? 'Открыть приложение' : 'Open App';
+  
+      const imagePath = path.join(__dirname, 'images', 'logo.onex.png');
+      await bot.sendPhoto(chatId, imagePath, {
+          caption,
+          reply_markup: {
+              inline_keyboard: [
+                  [{ text: buttonText, web_app: { url: FRONTEND_URL } }]
+              ]
+          }
+      });
+      return;
+    }
     console.log("📌 Полное сообщение от пользователя:", msg);
 
     const chatId = msg.chat.id;
